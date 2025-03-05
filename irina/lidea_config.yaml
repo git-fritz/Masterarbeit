@@ -1,0 +1,55 @@
+datasets:
+  ground_footprint: "E:\\Thesis\\merge_chm\\FLM\\fix.shp"
+  centerline: "E:\\Thesis\\merge_chm\\FLM\\all_group_copy.shp"
+  output_dir: "E:\\Thesis\\merge_chm\\FLM\\irina_script"
+
+parameters:
+  plot_area: 10
+  segment_area: 100
+  num_workers: 4
+  n_samples: 0
+  offset: 5.0
+  max_width: false
+  processes: 4
+  verbose: false
+  max_workers: 1
+  target_size_segment: 10
+  group_size: 10
+  smoothening: 1.5    ### 1 is super light, 3 is strong
+
+recovery_parameters:
+  n_segments: 0                 # 0 if we want full assessment, > 0 if we want it for X segments (test)
+  buffer_size: 50                  # for adjacency
+  max_workers: 4
+
+height_thresholds:
+  Low_density_treed_wetland: 60
+  Treed_wetland: 65
+  Transitional: 80
+  Mesic_upland: 80
+  Dry_upland: 60
+  Shrubs: 60
+  Dwarf_shrubs: 30
+
+scenarios:
+  B:
+    Arrested:
+      cover_range: [0, 70]  # Less than 70% cover
+    Advanced_regeneration:
+      cover_range: [70, 100]  # Greater than 70% cover
+
+  C:
+    Arrested:
+      cover_range: [0, 30]  # Less than 30% cover
+    Regenerating:
+      cover_range: [30, 70]  # Between 30% and 70% cover
+    Advanced_regeneration:
+      cover_range: [70, 100]  # Greater than 70% cover
+
+  D:
+    Arrested:
+      cover_range: [ 0, 0.3 ]  # Less than 30% of the coverage ratio
+    Regenerating:
+      cover_range: [ 0.3, 0.7 ]  # Between 30% and 70% of the coverage ratio
+    Advanced_regeneration:
+      cover_range: [ 0.7, 1 ]  # Greater than 70% of the coverage ratio
