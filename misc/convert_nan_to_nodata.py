@@ -1,3 +1,10 @@
+# %%
+# SCRIPT USED TO CONVERT NAN TO NODATA VALUES IN A RASTER
+#
+# %%
+
+
+
 import numpy as np
 import rasterio
 

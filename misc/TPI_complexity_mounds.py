@@ -4,6 +4,11 @@ Created on Thu Feb 13 14:19:30 2025
 
 @author: Felix
 """
+# %%
+# THIS CODE CALCULATES "MOUND COMPLEXITY" AND ADDS IT AS A COLUMN TO THE TPI GPKG
+#
+# %%
+
 
 import geopandas as gpd
 

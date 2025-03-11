@@ -4,6 +4,11 @@ Created on Fri Jan 17 16:19:57 2025
 
 @author: Felix
 """
+# %%
+# THIS CODE MERGES TWO RASTER: IN THIS CASE USED TO MERGE WEST AND EAST OF
+# LIDEA PILOT TOGETHER INTO ONE RASTER (DTM AND CHM)
+# %%
+
 
 import rasterio
 from rasterio.merge import merge

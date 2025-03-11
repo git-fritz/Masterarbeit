@@ -1,4 +1,8 @@
-# -*- coding: utf-8 -*-
+# %%
+# CODE TO CHECK VALUE DISTRIBUTION OF ANY GPKG VALUE
+# %%
+
+
 import geopandas as gpd
 import matplotlib.pyplot as plt
 

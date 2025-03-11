@@ -1,3 +1,8 @@
+# %%
+# THIS CODE TAKES ALL PREVIOUSLY CALCULATED METRICS AND "ENRICHES" THE MODEL INPUT
+# GPKG WITH THE VALUES FOR EACH PLOT
+# %%
+# this step adds dem_diff, dem_SD, rough_avg, rough_SD and all TPI Metrics
 import geopandas as gpd
 import rasterio
 from rasterstats import zonal_stats
@@ -73,7 +78,7 @@ gdf.to_file(output_gpkg, driver="GPKG")
 print(f"✅ Updated GPKG saved as: {output_gpkg}")
 
 #%%
-
+# this step calculates mound_area and mound_count inside a plot
 import geopandas as gpd
 
 # File paths (update these)
@@ -126,6 +131,8 @@ plots.to_file(output_gpkg, driver="GPKG")
 print(f"✅ Updated GPKG saved as: {output_gpkg}")
 
 #%%
+# this step calculates mound_density and mound_coverage for every tpi value
+
 import geopandas as gpd
 
 # File path (update this with the actual file path)
@@ -156,6 +163,8 @@ gdf.to_file(output_gpkg, driver="GPKG")
 print(f"✅ Updated GPKG saved as: {output_gpkg}")
 
 #%%
+# updates all tpi values and adds mound_area as column (replaces calc_area_TPI_polygon.py)
+
 import geopandas as gpd
 
 # File paths for TPI GPKGs
@@ -184,6 +193,8 @@ for size, tpi_path in tpi_gpkgs.items():
 print("🚀 All TPI GPKGs have been updated with 'mound_area'!")
 
 #%%
+# this step adds max_mound_size and avg_mound_size
+
 import geopandas as gpd
 
 # File paths
@@ -249,7 +260,9 @@ plots.to_file(output_gpkg, driver="GPKG")
 
 print(f"✅ Updated GPKG saved as: {output_gpkg}")
 
-#%% average CHM value per plot
+#%% 
+# this step adds mean CHM value per plot (uses normal and thresholded chm)
+# ADD MEDIAN TO THIS !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 import geopandas as gpd
 import rasterio
@@ -282,7 +295,8 @@ gdf.to_file(output_gpkg_path, driver="GPKG")
 
 print(f"Updated GPKG saved to: {output_gpkg_path}")
 
-#%% shrubs
+#%% 
+# this step adds plot_shrub_veg_%cover (vegetation below 60cm)
 
 import geopandas as gpd
 import rasterio
@@ -348,7 +362,8 @@ plots.to_file(output_gpkg, driver="GPKG")
 
 print(f"✅ Updated GPKG saved as: {output_gpkg}")
 
-#%% twi adding
+#%% 
+#this step adds max_, min_ and avg_twi 
 
 import geopandas as gpd
 import rasterio
@@ -416,7 +431,8 @@ plots.to_file(output_gpkg, driver="GPKG")
 
 print(f"✅ Updated GPKG saved as: {output_gpkg}")
 
-#%% aspect and slope avg
+#%% 
+# this step adds aspect and slope avg
 
 import geopandas as gpd
 import rasterio

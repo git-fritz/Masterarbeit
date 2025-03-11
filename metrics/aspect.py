@@ -1,9 +1,12 @@
-# -*- coding: utf-8 -*-
 """
 Created on Tue Feb 11 12:18:15 2025
 
 @author: Felix
 """
+# %%
+# CODE TO CALCULATE ASPECT FROM DTM
+# %%
+
 
 import rasterio
 import richdem as rd

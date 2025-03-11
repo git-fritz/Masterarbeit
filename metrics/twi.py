@@ -5,7 +5,12 @@ Created on Sat Mar  1 20:33:28 2025
 @author: Felix
 """
 # %%
- 
+# CODE TO CALCULATE TWI
+# %%
+
+
+# %%
+# resa
 gdalinfo "E:\Thesis\data\DEM\merged_raster_clean9999.tif"
 Pixel Size = (X_RESOLUTION, Y_RESOLUTION)
 

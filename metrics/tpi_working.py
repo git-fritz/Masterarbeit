@@ -4,6 +4,12 @@ Created on Fri Jan 17 14:35:24 2025
 
 @author: Felix
 """
+
+# %%
+# CODE TO CALULATE TPI AT DIFFRENT SCALES: 25, 35, 55
+# %%
+
+
 import numpy as np
 import rasterio
 from scipy.ndimage import generic_filter

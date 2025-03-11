@@ -4,6 +4,15 @@ Created on Sun Feb  9 14:53:30 2025
 
 @author: Felix
 """
+# %%
+# This script processes a GeoPackage (.gpkg) file containing polygon geometries
+# and calculates the area of each polygon, ensuring the correct coordinate 
+# reference system (CRS) for accurate calculations. Then, it saves the updated dataset.
+#
+# ADDS AREA_M2 COLUMN TO TPI GPKG TO THEN USE LATER ON FOR MODEL INPUTS
+#
+# %%
+
 
 import geopandas as gpd
 

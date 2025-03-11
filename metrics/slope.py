@@ -1,9 +1,12 @@
-# -*- coding: utf-8 -*-
 """
 Created on Tue Feb 11 12:04:17 2025
 
 @author: Felix
 """
+# %%
+# CODE TO CALCULATE SLOPE FROM A DTM 
+# %%
+
 
 import rasterio
 import richdem as rd
