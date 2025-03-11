@@ -5,6 +5,13 @@ Created on Wed Feb 12 17:40:53 2025
 @author: Felix
 """
 
+# %%
+# THIS CODE IS USED TO THRESHOLD THE POLYGONIZED TPI LAYERS BY ADDING AN "AREA"
+# COLUMN AND THEN SETTING A MINIMUM AREA THRESHOLD TO CLEAR UP NOISY TPI DATA
+# %%
+
+
+
 import geopandas as gpd
 import fiona
 

@@ -4,6 +4,13 @@ Created on Wed Jan 22 15:48:38 2025
 
 @author: Felix
 """
+# %%
+# THIS CODE TAKES A CHM (OR ANY RASTER) AND GIVES THE OPTION TO CUTOFF VALUES
+# ABOVE OR BELOW A SET THRESHOLD
+#
+# %%
+
+
 import rasterio
 import numpy as np
 import os

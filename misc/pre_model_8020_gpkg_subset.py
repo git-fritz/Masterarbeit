@@ -4,6 +4,14 @@ Created on Sat Mar  1 18:40:58 2025
 
 @author: Felix
 """
+# %%
+# THIS CODE TAKES THE FINAL MODEL INPUT GPKG AND RANDOMLY SPLITS IT INTO A 80/20
+# SPLIT: THE 80% ARE USED TO TRAIN THE MODEL, THE 20% ARE SET ASIDE TO BE USED
+# LATER AS UNSEEN/-TRAINED VALIDATION DATA
+#
+# %%
+
+
 
 #create subset of data
 import geopandas as gpd

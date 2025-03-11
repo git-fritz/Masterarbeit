@@ -5,6 +5,13 @@ Created on Sat Feb  8 14:16:00 2025
 @author: Felix
 """
 
+# %%
+# THIS CODE CAN BE USED TO POLYGONIZE RASTERS: IN THIS CASE TPI´S
+# THOUGH CURRENTLY USING THE BUILD IN CAPABILITIES OF QGIS IS TO BE PREFERRED 
+#
+# %%
+
+
 from osgeo import gdal, ogr
 
 # Input raster (TPI Raster) - Update this path
