@@ -62,9 +62,9 @@ def get_layer_names(gpkg_path):
     return layers
 
 # Example usage
-gpkg_file = r"E:\Thesis\data\DEM_TPI\tpi25\merged_raster_clean9999_tpi25_filter002_polygons_area.gpkg"
-output_gpkg = r"E:\Thesis\data\DEM_TPI\tpi25\merged_raster_clean9999_tpi25_filter002_polygons_area01.gpkg" # Optional, set to None to overwrite
-area_threshold = 0.1  # Set the area threshold
+gpkg_file = r"E:\Thesis\shapes\kmcluster_mounds_area.gpkg"
+output_gpkg = r"E:\Thesis\shapes\kmcluster_mounds_area05.gpkg" # Optional, set to None to overwrite
+area_threshold = 0.5  # Set the area threshold
 
 layer_names = get_layer_names(gpkg_file)
 updated_layers = add_area_column(gpkg_file, output_gpkg)

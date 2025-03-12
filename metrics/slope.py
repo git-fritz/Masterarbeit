@@ -28,6 +28,6 @@ def calculate_slope(input_raster, output_raster):
         dst.write(slope.astype(np.float32), 1)
 
 # Example usage in Spyder:
-input_raster = r"E:\Thesis\data\DEM\merged_raster_clean.tif"
-output_raster = r"E:\Thesis\testing\metrics\slope_check.tif"
+input_raster = r"E:\Thesis\data\DEM\nDTM_clip.tif"
+output_raster = r"E:\Thesis\testing\metrics\slope_ndtm.tif"
 calculate_slope(input_raster, output_raster)

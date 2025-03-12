@@ -17,8 +17,8 @@ Created on Sun Feb  9 14:53:30 2025
 import geopandas as gpd
 
 # ✅ Update paths
-input_gpkg = r"E:\Thesis\data\DEM_TPI\tpi55_filtered_polygon.gpkg" # Replace with your input GPKG file
-output_gpkg = r"E:\Thesis\data\DEM_TPI\merged_raster_clean9999_tpi55_filter002_polygons_area.gpkg"  # Where to save the new GPKG
+input_gpkg = r"E:\Thesis\shapes\kmcluster_mounds.gpkg" # Replace with your input GPKG file
+output_gpkg = r"E:\Thesis\shapes\kmcluster_mounds_area.gpkg"  # Where to save the new GPKG
 
 # ✅ Load the dataset
 gdf = gpd.read_file(input_gpkg)
