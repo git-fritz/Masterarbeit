@@ -81,57 +81,50 @@ gdf.to_file(output_gpkg_path, driver="GPKG")
 print(f"✅ Updated GPKG saved with max_height column (filtered): {output_gpkg_path}")
 # %%
 
-
 import geopandas as gpd
 import rasterio
 from rasterstats import zonal_stats
 from shapely.geometry import box
-from tqdm.auto import tqdm
-from multiprocessing import Pool, cpu_count
+from tqdm import tqdm  # ✅ Import tqdm for progress bar
 
 # Define input file paths
 merged_gpkg_path = r"E:\Thesis\merged_seedlings.gpkg"   # Merged GPKG file
 chm_raster_path = r"E:\Thesis\data\CHM\merged_chm.tif"  # CHM raster file
 output_gpkg_path = r"E:\Thesis\merged_seedlings_height.gpkg"   # Output GPKG file
 
-# Load GeoPackage
+# Load the merged GeoPackage
 gdf = gpd.read_file(merged_gpkg_path)
 print(f"✅ Loaded {len(gdf)} polygons from GPKG.")
 
-# Open CHM raster to get bounds & CRS
+# Open CHM raster to get bounds and CRS
 with rasterio.open(chm_raster_path) as src:
-    chm_bounds = box(*src.bounds)
+    chm_bounds = box(*src.bounds)  # Create a polygon from raster bounds
     chm_crs = src.crs
 
-# Ensure CRS match
+# Ensure the GPKG and CHM raster have the same CRS
 if gdf.crs != chm_crs:
     print("⚠️ CRS mismatch detected! Converting to match CHM raster.")
     gdf = gdf.to_crs(chm_crs)
 
-# Filter polygons inside CHM extent
+# 🔹 Filter polygons that are inside the CHM raster bounds
 gdf = gdf[gdf.geometry.intersects(chm_bounds)]
-print(f"✅ {len(gdf)} polygons remain after filtering.")
+print(f"✅ {len(gdf)} polygons remain after filtering out-of-bounds shapes.")
 
-# Function to process a batch of polygons
-def process_batch(batch):
-    return zonal_stats(batch, chm_raster_path, stats=["max"], all_touched=True)
+# Compute max CHM height per polygon with a forced console-friendly progress bar
+max_heights = []
+tqdm_bar = tqdm(total=len(gdf), desc="Calculating max height", dynamic_ncols=True, leave=True, ascii=True)
 
-# Split data into chunks
-num_cores = max(1, cpu_count() - 2)  # Use all but 2 cores
-batch_size = len(gdf) // num_cores
-batches = [gdf.iloc[i:i+batch_size] for i in range(0, len(gdf), batch_size)]
+for stat in zonal_stats(gdf, chm_raster_path, stats=["max"]):
+    max_heights.append(stat["max"] if stat["max"] is not None else 0)
+    tqdm_bar.update(1)  # ✅ Ensure progress bar updates correctly
 
-# Run in parallel
-print(f"⚡ Running zonal stats with {num_cores} cores...")
-with Pool(num_cores) as pool:
-    results = list(tqdm(pool.imap(process_batch, batches), total=len(batches), desc="Processing batches", unit="batch"))
+tqdm_bar.close()  # ✅ Close progress bar properly
 
-# Flatten results
-max_heights = [stat["max"] if stat and "max" in stat else 0 for batch in results for stat in batch]
-
-# Add results to GeoDataFrame
+# Add max height values to the GeoDataFrame
 gdf["max_height"] = max_heights
 
-# Save output
+# Save the updated GeoPackage
 gdf.to_file(output_gpkg_path, driver="GPKG")
-print(f"✅ Updated GPKG saved: {output_gpkg_path}")
+
+print(f"✅ Updated GPKG saved with max_height column (filtered): {output_gpkg_path}")
+

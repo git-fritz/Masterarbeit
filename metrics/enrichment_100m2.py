@@ -8,7 +8,7 @@ import rasterio
 from rasterstats import zonal_stats
 
 # File paths (update these with your actual file paths)
-gpkg_path = r"E:\Thesis\data\shrink_metrics\shrinkmetrics.gpkg"
+gpkg_path = "E:\Thesis\data\shrink_metrics\shrinkmetrics100.gpkg"
 dem_path = r"E:\Thesis\data\DEM\nDTM_clip.tif"
 roughness_path = r"E:\Thesis\data\DEM\roughness_ndtm.tif"
 # tpi_paths = {
@@ -73,7 +73,7 @@ gdf["rough_SD"] = safe_stat(roughness_stats, "std")
 print("✅ All TPI metrics processed!")
 
 # Save the updated GPKG
-output_gpkg = r"E:\Thesis\data\shrink_metrics\shrinkmetrics_v1.gpkg"
+output_gpkg = r"E:\Thesis\data\shrink_metrics\shrinkmetrics100_v1.gpkg"
 gdf.to_file(output_gpkg, driver="GPKG")
 print(f"✅ Updated GPKG saved as: {output_gpkg}")
 
@@ -82,7 +82,7 @@ print(f"✅ Updated GPKG saved as: {output_gpkg}")
 import geopandas as gpd
 
 # File paths (update these)
-plots_gpkg = r"E:\Thesis\data\shrink_metrics\shrinkmetrics_v1.gpkg"
+plots_gpkg = r"E:\Thesis\data\shrink_metrics\shrinkmetrics100_v1.gpkg"
 mounds_gpkg = r"E:\Thesis\data\mounds_percentile\mounds_percentile_area05.gpkg"
 
 # Load GeoPackages
@@ -125,7 +125,7 @@ plots = plots.merge(mound_counts, on="plot_id", how="left").fillna({"mound_count
 plots = plots.merge(mound_areas, on="plot_id", how="left").fillna({"mound_area_15percentile": 0})
 
 # Save updated plots with new attributes
-output_gpkg = r"E:\Thesis\data\shrink_metrics\shrinkmetrics_v2.gpkg"
+output_gpkg = r"E:\Thesis\data\shrink_metrics\shrinkmetrics100_v2.gpkg"
 plots.to_file(output_gpkg, driver="GPKG")
 
 print(f"✅ Updated GPKG saved as: {output_gpkg}")
@@ -165,7 +165,7 @@ print(f"✅ Updated GPKG saved as: {output_gpkg}")
 import geopandas as gpd
 
 # File path (update this with the actual file path)
-gpkg_path =  r"E:\Thesis\data\shrink_metrics\shrinkmetrics_v2.gpkg"
+gpkg_path = r"E:\Thesis\data\shrink_metrics\shrinkmetrics100_v2.gpkg"
 
 # Load the GPKG
 gdf = gpd.read_file(gpkg_path)
@@ -184,7 +184,7 @@ gdf["mound_density_15percentile"] = gdf["mound_count_15percentile"] / gdf["plot_
 gdf["mound_coverage_15percentile"] = (gdf["mound_area_15percentile"] / gdf["plot_area"]) * 100
 
 # Save the updated GPKG
-output_gpkg =  r"E:\Thesis\data\shrink_metrics\shrinkmetrics_v3.gpkg"
+output_gpkg =  r"E:\Thesis\data\shrink_metrics\shrinkmetrics100_v3.gpkg"
 gdf.to_file(output_gpkg, driver="GPKG")
 
 print(f"✅ Updated GPKG saved as: {output_gpkg}")
@@ -288,7 +288,7 @@ print(f"✅ Updated GPKG saved as: {output_gpkg}")
 import geopandas as gpd
 
 # File path (update if needed)
-gpkg_path = r"E:\Thesis\data\shrink_metrics\shrinkmetrics_v3.gpkg"
+gpkg_path = r"E:\Thesis\data\shrink_metrics\shrinkmetrics100_v3.gpkg"
 
 # Load the GPKG
 gdf = gpd.read_file(gpkg_path)
@@ -307,7 +307,7 @@ gdf["max_mound_size_15percentile"] = gdf.groupby("plot_id")["mound_area_15percen
 gdf["avg_mound_size_15percentile"] = gdf.groupby("plot_id")["mound_area_15percentile"].transform("mean")
 
 # Save the updated GPKG
-output_gpkg = r"E:\Thesis\data\shrink_metrics\shrinkmetrics_v4.gpkg"
+output_gpkg = r"E:\Thesis\data\shrink_metrics\shrinkmetrics100_v4.gpkg"
 gdf.to_file(output_gpkg, driver="GPKG")
 
 print(f"✅ Updated GPKG saved as: {output_gpkg}")
@@ -351,7 +351,7 @@ import rasterio
 from rasterstats import zonal_stats
 
 # Define input file paths
-gpkg_path = r"E:\Thesis\data\shrink_metrics\shrinkmetrics_v4.gpkg"  # Replace with actual GPKG file path
+gpkg_path = r"E:\Thesis\data\shrink_metrics\shrinkmetrics100_v4.gpkg"  # Replace with actual GPKG file path
 chm_rasters = {
     "chm": r"E:\Thesis\data\CHM\merged_chm.tif",               # Full CHM
     "chm_under5": r"E:\Thesis\data\CHM\chm_under5.tif",  # CHM under 5m
@@ -380,7 +380,7 @@ for chm_name, chm_path in chm_rasters.items():
     gdf[f"median_{chm_name}"] = [stat["median"] if stat["median"] is not None else 0 for stat in stats]
 
 # Save the updated GeoDataFrame with CHM statistics
-output_gpkg_path = r"E:\Thesis\data\shrink_metrics\shrinkmetrics_v5.gpkg"   # Replace with desired output path
+output_gpkg_path = r"E:\Thesis\data\shrink_metrics\shrinkmetrics100_v5.gpkg"   # Replace with desired output path
 gdf.to_file(output_gpkg_path, driver="GPKG")
 
 print(f"✅ Updated GPKG saved to: {output_gpkg_path}")
@@ -531,7 +531,7 @@ import numpy as np
 from rasterio.mask import mask
 
 # File paths
-plots_gpkg = r"E:\Thesis\data\shrink_metrics\shrinkmetrics_v5.gpkg"
+plots_gpkg = r"E:\Thesis\data\shrink_metrics\shrinkmetrics100_v5.gpkg"
 slope_raster = r"E:\Thesis\data\DEM\slope_ndtm.tif"
 aspect_raster = r"E:\Thesis\data\DEM\aspect_ndtm.tif"
 
@@ -611,7 +611,7 @@ plots["plot_avg_slope"] = avg_slope_values
 plots["plot_avg_aspect"] = avg_aspect_values
 
 # Save updated GPKG
-output_gpkg = r"E:\Thesis\data\shrink_metrics\shrinkmetrics_v6.gpkg"
+output_gpkg = r"E:\Thesis\data\shrink_metrics\shrinkmetrics100_v6.gpkg"
 plots.to_file(output_gpkg, driver="GPKG")
 
 print(f"✅ Updated GPKG saved as: {output_gpkg}")

@@ -316,10 +316,10 @@ def process_site():
     num_cores = 20
 
     # Define file paths manually
-    footprint_path = r"E:\Thesis\FLM_shrink\felix_shrunk_footprint_plots20m2.gpkg"
+    footprint_path = r"E:\Thesis\FLM_shrink\felix_shrunk_footprint_ID_segments100m2_side.gpkg"
     chm_path = r"E:\Thesis\data\CHM\merged_chm.tif"
     ndtm_path = r"E:\Thesis\data\DEM\nDTM_clip.tif"
-    output_path = r"E:\Thesis\data\shrink_metrics\shrinkmetrics.gpkg"
+    output_path = r"E:\Thesis\data\shrink_metrics\shrinkmetrics100.gpkg"
     
     print(f"Processing site: {sitename}...")
     process_unified_dataset(
