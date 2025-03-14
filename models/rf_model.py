@@ -19,7 +19,7 @@ import shap
 import sklearn
 #%%
 # Load the dataset
-file_path = "E:\Thesis\data\metrics_dataset_remaining_80.gpkg"  # Replace with your actual file path
+file_path = r"E:\Thesis\data\shrink_metrics\auto_pre8020\shrinkmetrics_v6_80.gpkg"  # Replace with your actual file path
 gdf = gpd.read_file(file_path)
 
 # Display the first few rows
@@ -30,19 +30,26 @@ print(gdf.columns)
 
 #%%
 # Define the response variable (target)
-y = gdf["mean_chm"]  # This is what we are predicting
+y = gdf["median_chm"]  # This is what we are predicting
 
 # List of columns to exclude
 # exclude_features = ["plot_id", "geometry", "mean_chm", "max_width", "plot_area", "edge_points", 'mean_chm_under5', "plot_forest_%cover", "plot_medium_veg_%cover", "plot_tall_veg_%cover"]  # Exclude ID, geometry, and target
 
-exclude_features = [ 'avg_width', 'max_width', 'edge_points', 'plot_id', 'plot_area',
-       'plot_short_veg_%cover', 'plot_medium_veg_%cover',
-       'plot_tall_veg_%cover', 'plot_forest_%cover', 'side_short_veg_%cover',
-       'side_medium_veg_%cover', 'side_tall_veg_%cover', 'side_forest_%cover',
-       'adjacency_area_ha', 'adjacency_tree13m_coverage',
-       'adjacency_tree8m_coverage', 'adjacency_tree5m_coverage',
-       'adjacency_tree3m_coverage', 'adjacency_tree1.5m_coverage',
-       'mean_chm', 'mean_chm_under5', 'geometry']
+exclude_features = ['id', 'avg_width', 'max_width', 'width_hist', 'width_bins', 'UniqueID',
+       'shrink_dis', 'PartID', 'area', 'centroid_x', 'centroid_y',
+       'edge_points', 'side', 'SegmentID', 'plot_id', 'segment_area',
+       'side_area', 'plot_area', 'plot_short_veg_%cover',
+       'plot_medium_veg_%cover', 'plot_tall_veg_%cover', 'plot_forest_%cover',
+       'side_short_veg_%cover', 'side_medium_veg_%cover',
+       'side_tall_veg_%cover', 'side_forest_%cover',
+       'segment_short_veg_%cover', 'segment_medium_veg_%cover',
+       'segment_tall_veg_%cover', 'segment_forest_%cover', 'adjacency_area_ha',
+       'adjacency_tree13m_coverage', 'adjacency_tree8m_coverage',
+       'adjacency_tree5m_coverage', 'adjacency_tree3m_coverage',
+       'adjacency_tree1.5m_coverage', 
+       'ndtm_iqr', 'mean_chm', 'median_chm', 'mean_chm_under5', 'median_chm_under5',
+       'mean_chm_under2', 'median_chm_under2', 'plot_avg_slope',
+       'plot_avg_aspect', 'geometry','hummock_coverage', 'hollow_coverage']
 # Select all columns except the excluded ones
 X = gdf.drop(columns=exclude_features, errors="ignore")
 
@@ -110,7 +117,7 @@ plt.show()
 #%% Test against unused dataset
 
 # Load the new dataset (replace with your actual file path)
-new_file_path = r"E:\Thesis\data\metrics_dataset_subset_20.gpkg" 
+new_file_path = r"E:\Thesis\data\shrink_metrics\auto_pre8020\shrinkmetrics_v6_20.gpkg"
 gdf_new = gpd.read_file(new_file_path)
 
 # Check available columns
@@ -120,7 +127,7 @@ print("Columns in new dataset:", gdf_new.columns.tolist())
 print(gdf_new.head())
 #%%
 # Remove non-numeric columns (e.g., ID, geometry, target variable)
-exclude_features = ["plot_id", "geometry", "mean_chm", "max_width", "plot_area", "edge_points", "mean_chm_under5"]  # Exclude ID, geometry, and target
+# exclude_features = ["plot_id", "geometry", "mean_chm", "max_width", "plot_area", "edge_points", "mean_chm_under5"]  # Exclude ID, geometry, and target
 
 # Select the same features as used for training
 X_new = gdf_new.drop(columns=exclude_features, errors="ignore")
@@ -150,11 +157,11 @@ if "mean_chm" in gdf_new.columns:
     stats_comparison = pd.DataFrame({
         "Metric": ["Mean", "Median", "Min", "Max", "Std Dev"],
         "Actual CHM": [
-            gdf_new["mean_chm"].mean(),
-            gdf_new["mean_chm"].median(),
-            gdf_new["mean_chm"].min(),
-            gdf_new["mean_chm"].max(),
-            gdf_new["mean_chm"].std(),
+            gdf_new["median_chm"].mean(),
+            gdf_new["median_chm"].median(),
+            gdf_new["median_chm"].min(),
+            gdf_new["median_chm"].max(),
+            gdf_new["median_chm"].std(),
         ],
         "Predicted CHM": [
             gdf_new["predicted_chm"].mean(),
@@ -174,11 +181,11 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
 if "mean_chm" in gdf_new.columns:
     # Compute error metrics
-    mae_new = mean_absolute_error(gdf_new["mean_chm"], gdf_new["predicted_chm"])
+    mae_new = mean_absolute_error(gdf_new["median_chm"], gdf_new["predicted_chm"])
     # rmse_new = mean_squared_error(gdf_new["mean_chm"], gdf_new["predicted_chm"], squared=False)
-    rmse_new = mean_squared_error(gdf_new["mean_chm"], gdf_new["predicted_chm"]) ** 0.5  # Take the square root
+    rmse_new = mean_squared_error(gdf_new["median_chm"], gdf_new["predicted_chm"]) ** 0.5  # Take the square root
 
-    r2_new = r2_score(gdf_new["mean_chm"], gdf_new["predicted_chm"])
+    r2_new = r2_score(gdf_new["median_chm"], gdf_new["predicted_chm"])
 
     print(f"\nModel Evaluation on New Data:")
     print(f"MAE: {mae_new:.3f}")
@@ -195,7 +202,7 @@ if "mean_chm" in gdf_new.columns:
     plt.figure(figsize=(10, 5))
 
     # Plot actual vs predicted CHM distributions
-    sns.kdeplot(gdf_new["mean_chm"], label="Actual CHM", fill=True, color="blue")
+    sns.kdeplot(gdf_new["median_chm"], label="Actual CHM", fill=True, color="blue")
     sns.kdeplot(gdf_new["predicted_chm"], label="Predicted CHM", fill=True, color="red")
 
     plt.title("Distribution of Actual vs Predicted CHM Heights")
@@ -209,11 +216,11 @@ if "mean_chm" in gdf_new.columns:
     plt.figure(figsize=(6,6))
 
     # Scatter plot
-    sns.scatterplot(x=gdf_new["mean_chm"], y=gdf_new["predicted_chm"], alpha=0.5)
+    sns.scatterplot(x=gdf_new["median_chm"], y=gdf_new["predicted_chm"], alpha=0.5)
 
     # Add a perfect prediction line (y = x)
-    plt.plot([gdf_new["mean_chm"].min(), gdf_new["mean_chm"].max()], 
-             [gdf_new["mean_chm"].min(), gdf_new["mean_chm"].max()], 
+    plt.plot([gdf_new["median_chm"].min(), gdf_new["median_chm"].max()], 
+             [gdf_new["median_chm"].min(), gdf_new["median_chm"].max()], 
              linestyle="--", color="black")
 
     plt.xlabel("Actual CHM Height")
@@ -224,8 +231,7 @@ if "mean_chm" in gdf_new.columns:
 
 
 
-
-
+# %%
 
 
 
