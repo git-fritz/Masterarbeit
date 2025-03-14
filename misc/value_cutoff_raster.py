@@ -32,8 +32,8 @@ def process_raster(input_raster, output_raster, threshold):
 
 if __name__ == "__main__":
     input_raster = r"E:\Thesis\data\CHM\merged_chm.tif"
-    output_raster = r"E:\Thesis\data\CHM\chm_under5.tif"
-    threshold = 5   # Set your threshold value here
+    output_raster = r"E:\Thesis\data\CHM\chm_under2.tif"
+    threshold = 2   # Set your threshold value here
     os.makedirs(os.path.dirname(output_raster), exist_ok=True)
 
     process_raster(input_raster, output_raster, threshold)

@@ -8,14 +8,14 @@ import rasterio
 from rasterstats import zonal_stats
 
 # File paths (update these with your actual file paths)
-gpkg_path = r"E:\Thesis\data\metrics_dataset.gpkg"
-dem_path = r"E:\Thesis\data\DEM\merged_raster_clean9999.tif"
-roughness_path = r"E:\Thesis\testing\metrics\roughness.tif"
-tpi_paths = {
-    25: r"E:\Thesis\data\DEM_TPI\tpi25\merged_raster_clean9999_tpi25_filter002.tif",
-    35: r"E:\Thesis\data\DEM_TPI\tpi35\merged_raster_clean9999_tpi35_filter002.tif",
-    55: r"E:\Thesis\data\DEM_TPI\tpi55\merged_raster_clean9999_tpi55_filter002.tif"
-}
+gpkg_path = r"E:\Thesis\data\shrink_metrics\shrinkmetrics.gpkg"
+dem_path = r"E:\Thesis\data\DEM\nDTM_clip.tif"
+roughness_path = r"E:\Thesis\data\DEM\roughness_ndtm.tif"
+# tpi_paths = {
+#     25: r"E:\Thesis\data\DEM_TPI\tpi25\merged_raster_clean9999_tpi25_filter002.tif",
+#     35: r"E:\Thesis\data\DEM_TPI\tpi35\merged_raster_clean9999_tpi35_filter002.tif",
+#     55: r"E:\Thesis\data\DEM_TPI\tpi55\merged_raster_clean9999_tpi55_filter002.tif"
+# }
 
 # Load the GPKG file with plots
 gdf = gpd.read_file(gpkg_path)
@@ -61,19 +61,19 @@ print("📊 Roughness Stats Calculated!")
 gdf["rough_avg"] = safe_stat(roughness_stats, "mean")
 gdf["rough_SD"] = safe_stat(roughness_stats, "std")
 
-# Calculate TPI metrics for each TPI raster
-for tpi_size, tpi_path in tpi_paths.items():
-    print(f"🔄 Processing TPI {tpi_size}...")
-    tpi_stats = zonal_stats(gdf, tpi_path, stats=["mean", "max", "std"])
+# # Calculate TPI metrics for each TPI raster
+# for tpi_size, tpi_path in tpi_paths.items():
+#     print(f"🔄 Processing TPI {tpi_size}...")
+#     tpi_stats = zonal_stats(gdf, tpi_path, stats=["mean", "max", "std"])
     
-    gdf[f"tpi{tpi_size}_mean"] = safe_stat(tpi_stats, "mean")
-    gdf[f"tpi{tpi_size}_max"] = safe_stat(tpi_stats, "max")
-    gdf[f"tpi{tpi_size}_SD"] = safe_stat(tpi_stats, "std")
+#     gdf[f"tpi{tpi_size}_mean"] = safe_stat(tpi_stats, "mean")
+#     gdf[f"tpi{tpi_size}_max"] = safe_stat(tpi_stats, "max")
+#     gdf[f"tpi{tpi_size}_SD"] = safe_stat(tpi_stats, "std")
 
 print("✅ All TPI metrics processed!")
 
 # Save the updated GPKG
-output_gpkg = r"E:\Thesis\data\metrics_dataset_v1.gpkg"
+output_gpkg = r"E:\Thesis\data\shrink_metrics\shrinkmetrics_v1.gpkg"
 gdf.to_file(output_gpkg, driver="GPKG")
 print(f"✅ Updated GPKG saved as: {output_gpkg}")
 
@@ -82,8 +82,8 @@ print(f"✅ Updated GPKG saved as: {output_gpkg}")
 import geopandas as gpd
 
 # File paths (update these)
-plots_gpkg = r"E:\Thesis\data\metrics_dataset_v1.2.gpkg"
-mounds_gpkg = r"E:\Thesis\data\DEM_TPI\tpi25\tpi25_polygon_area01_complx.gpkg"
+plots_gpkg = r"E:\Thesis\data\shrink_metrics\shrinkmetrics_v1.gpkg"
+mounds_gpkg = r"E:\Thesis\data\mounds_percentile\mounds_percentile_area05.gpkg"
 
 # Load GeoPackages
 plots = gpd.read_file(plots_gpkg)
@@ -114,18 +114,18 @@ if "plot_id" not in intersections.columns:
     raise ValueError("❌ 'plot_id' missing after overlay!")
 
 # 🔹 Count total number of mounds per plot (each mound is counted separately in each plot)
-mound_counts = intersections.groupby("plot_id")["mound_id"].nunique().reset_index(name="tpi25_mound_count")
+mound_counts = intersections.groupby("plot_id")["mound_id"].nunique().reset_index(name="mound_count_15percentile")
 
 # 🔹 Calculate total mound area inside each plot
-intersections["tpi25_mound_area"] = intersections.area
-mound_areas = intersections.groupby("plot_id")["tpi25_mound_area"].sum().reset_index()
+intersections["mound_area_15percentile"] = intersections.area
+mound_areas = intersections.groupby("plot_id")["mound_area_15percentile"].sum().reset_index()
 
 # 🔹 Merge results back into plots
-plots = plots.merge(mound_counts, on="plot_id", how="left").fillna({"tpi25_mound_count": 0})
-plots = plots.merge(mound_areas, on="plot_id", how="left").fillna({"tpi25_mound_area": 0})
+plots = plots.merge(mound_counts, on="plot_id", how="left").fillna({"mound_count_15percentile": 0})
+plots = plots.merge(mound_areas, on="plot_id", how="left").fillna({"mound_area_15percentile": 0})
 
 # Save updated plots with new attributes
-output_gpkg = r"E:\Thesis\data\metrics_dataset_v1.3.gpkg"
+output_gpkg = r"E:\Thesis\data\shrink_metrics\shrinkmetrics_v2.gpkg"
 plots.to_file(output_gpkg, driver="GPKG")
 
 print(f"✅ Updated GPKG saved as: {output_gpkg}")
@@ -133,31 +133,58 @@ print(f"✅ Updated GPKG saved as: {output_gpkg}")
 #%%
 # this step calculates mound_density and mound_coverage for every tpi value
 
+# import geopandas as gpd
+
+# # File path (update this with the actual file path)
+# gpkg_path = r"E:\Thesis\data\shrink_metrics\shrinkmetrics_v2.gpkg"
+
+# # Load the GPKG
+# gdf = gpd.read_file(gpkg_path)
+
+# # 🔹 Ensure required columns exist
+# required_columns = ["plot_area"] + [f"tpi{size}_mound_count" for size in [25, 35, 55]] + [f"tpi{size}_mound_area" for size in [25, 35, 55]]
+# missing_columns = [col for col in required_columns if col not in gdf.columns]
+
+# if missing_columns:
+#     raise ValueError(f"❌ Missing required columns in GPKG: {missing_columns}")
+
+# # 🔹 Calculate Mound Density (mounds per square meter) for TPI25, TPI35, TPI55
+# for size in [25, 35, 55]:
+#     gdf[f"tpi{size}_mound_density"] = gdf[f"tpi{size}_mound_count"] / gdf["plot_area"]
+
+# # 🔹 Calculate Mound Coverage (% of plot covered by mounds) for TPI25, TPI35, TPI55
+# for size in [25, 35, 55]:
+#     gdf[f"tpi{size}_mound_coverage"] = (gdf[f"tpi{size}_mound_area"] / gdf["plot_area"]) * 100
+
+# # Save the updated GPKG
+# output_gpkg = r"E:\Thesis\data\metrics_dataset_v1.4.gpkg"
+# gdf.to_file(output_gpkg, driver="GPKG")
+
+# print(f"✅ Updated GPKG saved as: {output_gpkg}")
+
 import geopandas as gpd
 
 # File path (update this with the actual file path)
-gpkg_path = r"E:\Thesis\data\metrics_dataset_v1.3.gpkg"
+gpkg_path =  r"E:\Thesis\data\shrink_metrics\shrinkmetrics_v2.gpkg"
 
 # Load the GPKG
 gdf = gpd.read_file(gpkg_path)
 
 # 🔹 Ensure required columns exist
-required_columns = ["plot_area"] + [f"tpi{size}_mound_count" for size in [25, 35, 55]] + [f"tpi{size}_mound_area" for size in [25, 35, 55]]
+required_columns = ["plot_area", "mound_count_15percentile", "mound_area_15percentile"]
 missing_columns = [col for col in required_columns if col not in gdf.columns]
 
 if missing_columns:
     raise ValueError(f"❌ Missing required columns in GPKG: {missing_columns}")
 
-# 🔹 Calculate Mound Density (mounds per square meter) for TPI25, TPI35, TPI55
-for size in [25, 35, 55]:
-    gdf[f"tpi{size}_mound_density"] = gdf[f"tpi{size}_mound_count"] / gdf["plot_area"]
+# 🔹 Calculate Mound Density (mounds per square meter)
+gdf["mound_density_15percentile"] = gdf["mound_count_15percentile"] / gdf["plot_area"]
 
-# 🔹 Calculate Mound Coverage (% of plot covered by mounds) for TPI25, TPI35, TPI55
-for size in [25, 35, 55]:
-    gdf[f"tpi{size}_mound_coverage"] = (gdf[f"tpi{size}_mound_area"] / gdf["plot_area"]) * 100
+# 🔹 Calculate Mound Coverage (% of plot covered by mounds)
+gdf["mound_coverage_15percentile"] = (gdf["mound_area_15percentile"] / gdf["plot_area"]) * 100
 
 # Save the updated GPKG
-output_gpkg = r"E:\Thesis\data\metrics_dataset_v1.4.gpkg"
+output_gpkg =  r"E:\Thesis\data\shrink_metrics\shrinkmetrics_v3.gpkg"
 gdf.to_file(output_gpkg, driver="GPKG")
 
 print(f"✅ Updated GPKG saved as: {output_gpkg}")
@@ -165,98 +192,123 @@ print(f"✅ Updated GPKG saved as: {output_gpkg}")
 #%%
 # updates all tpi values and adds mound_area as column (replaces calc_area_TPI_polygon.py)
 
-import geopandas as gpd
+# import geopandas as gpd
 
-# File paths for TPI GPKGs
-tpi_gpkgs = {
-   25: r"E:\Thesis\data\DEM_TPI\tpi25\tpi25_polygon_area01_complx.gpkg",
-   35: r"E:\Thesis\data\DEM_TPI\tpi35\tpi35_polygon_area01_complx.gpkg",
-   55: r"E:\Thesis\data\DEM_TPI\tpi55\tpi55_polygon_area01_complx.gpkg"
-}
+# # File paths for TPI GPKGs
+# tpi_gpkgs = {
+#    25: r"E:\Thesis\data\DEM_TPI\tpi25\tpi25_polygon_area01_complx.gpkg",
+#    35: r"E:\Thesis\data\DEM_TPI\tpi35\tpi35_polygon_area01_complx.gpkg",
+#    55: r"E:\Thesis\data\DEM_TPI\tpi55\tpi55_polygon_area01_complx.gpkg"
+# }
 
-# Loop through each TPI dataset and add "mound_area" column
-for size, tpi_path in tpi_gpkgs.items():
-    # Load the TPI GPKG
-    mounds = gpd.read_file(tpi_path)
+# # Loop through each TPI dataset and add "mound_area" column
+# for size, tpi_path in tpi_gpkgs.items():
+#     # Load the TPI GPKG
+#     mounds = gpd.read_file(tpi_path)
 
-    # Ensure the "area" column exists
-    if "area" not in mounds.columns:
-        raise ValueError(f"❌ 'area' column missing in {tpi_path}!")
+#     # Ensure the "area" column exists
+#     if "area" not in mounds.columns:
+#         raise ValueError(f"❌ 'area' column missing in {tpi_path}!")
 
-    # Copy "area" values into a new column "mound_area"
-    mounds["mound_area"] = mounds["area"]
+#     # Copy "area" values into a new column "mound_area"
+#     mounds["mound_area"] = mounds["area"]
 
-    # Save updated TPI GPKG
-    mounds.to_file(tpi_path, driver="GPKG")
-    print(f"✅ Added 'mound_area' to {tpi_path}")
+#     # Save updated TPI GPKG
+#     mounds.to_file(tpi_path, driver="GPKG")
+#     print(f"✅ Added 'mound_area' to {tpi_path}")
 
-print("🚀 All TPI GPKGs have been updated with 'mound_area'!")
+# print("🚀 All TPI GPKGs have been updated with 'mound_area'!")
 
 #%%
 # this step adds max_mound_size and avg_mound_size
 
+# import geopandas as gpd
+
+# # File paths
+# plots_gpkg = r"E:\Thesis\data\metrics_dataset_v1.4.gpkg"
+
+# mounds_gpkg = r"E:\Thesis\data\shrink_metrics\shrinkmetrics_v2.gpkg"
+
+
+# # Load the plots GPKG
+# plots = gpd.read_file(plots_gpkg)
+
+# # Ensure 'plot_id' exists
+# if "plot_id" not in plots.columns:
+#     raise ValueError("❌ 'plot_id' column missing in plots!")
+
+# # Loop through each TPI dataset
+# for size, mound_path in mounds_gpkg.items():
+#     # Load the mound GPKG
+#     mounds = gpd.read_file(mound_path)
+
+#     # Ensure same CRS
+#     if plots.crs != mounds.crs:
+#         mounds = mounds.to_crs(plots.crs)
+
+#     # Ensure required columns exist
+#     if "mound_id" not in mounds.columns:
+#         raise ValueError(f"❌ 'mound_id' column missing in {mound_path}!")
+#     if "mound_area" not in mounds.columns:
+#         raise ValueError(f"❌ 'mound_area' column missing in {mound_path}! Ensure you added it.")
+
+#     # 🔹 Perform spatial intersection (clip mounds to plot boundaries)
+#     intersections = gpd.overlay(mounds, plots, how="intersection", keep_geom_type=False)
+
+#     # 🔍 Debugging print statements
+#     print(f"🔹 Intersections for TPI{size}:")
+#     print(intersections.head())  
+#     print("Columns in intersections:", intersections.columns)
+#     print("plot_id counts:\n", intersections["plot_id"].value_counts())
+
+#     # 🔹 Ensure 'plot_id' is in intersections
+#     if "plot_id" not in intersections.columns:
+#         raise ValueError(f"❌ 'plot_id' missing after overlay for TPI{size}!")
+
+#     # 🔹 Calculate Maximum Mound Size per Plot (Using Only Clipped Area)
+#     intersections["clipped_mound_area"] = intersections.area  # Only use the clipped area
+#     max_mound_size = intersections.groupby("plot_id")["clipped_mound_area"].max().reset_index()
+#     max_mound_size.rename(columns={"clipped_mound_area": f"tpi{size}_max_mound_size"}, inplace=True)
+
+#     # 🔹 Calculate Average Mound Size per Plot (Using Only Clipped Area)
+#     avg_mound_size = intersections.groupby("plot_id")["clipped_mound_area"].mean().reset_index()
+#     avg_mound_size.rename(columns={"clipped_mound_area": f"tpi{size}_avg_mound_size"}, inplace=True)
+
+#     # 🔹 Merge results back into plots
+#     plots = plots.merge(max_mound_size, on="plot_id", how="left").fillna({f"tpi{size}_max_mound_size": 0})
+#     plots = plots.merge(avg_mound_size, on="plot_id", how="left").fillna({f"tpi{size}_avg_mound_size": 0})
+
+# # Save the updated GPKG
+# output_gpkg = r"E:\Thesis\data\metrics_dataset_v1.5.gpkg"
+# plots.to_file(output_gpkg, driver="GPKG")
+
+# print(f"✅ Updated GPKG saved as: {output_gpkg}")
+
+
 import geopandas as gpd
 
-# File paths
-plots_gpkg = r"E:\Thesis\data\metrics_dataset_v1.4.gpkg"
+# File path (update if needed)
+gpkg_path = r"E:\Thesis\data\shrink_metrics\shrinkmetrics_v3.gpkg"
 
-mounds_gpkg = {
-    25: r"E:\Thesis\data\DEM_TPI\tpi25\tpi25_polygon_area01_complx.gpkg",
-    35: r"E:\Thesis\data\DEM_TPI\tpi35\tpi35_polygon_area01_complx.gpkg",
-    55: r"E:\Thesis\data\DEM_TPI\tpi55\tpi55_polygon_area01_complx.gpkg"
-}
+# Load the GPKG
+gdf = gpd.read_file(gpkg_path)
 
-# Load the plots GPKG
-plots = gpd.read_file(plots_gpkg)
+# 🔹 Ensure required columns exist
+required_columns = ["plot_id", "plot_area", "mound_area_15percentile"]
+missing_columns = [col for col in required_columns if col not in gdf.columns]
 
-# Ensure 'plot_id' exists
-if "plot_id" not in plots.columns:
-    raise ValueError("❌ 'plot_id' column missing in plots!")
+if missing_columns:
+    raise ValueError(f"❌ Missing required columns in GPKG: {missing_columns}")
 
-# Loop through each TPI dataset
-for size, mound_path in mounds_gpkg.items():
-    # Load the mound GPKG
-    mounds = gpd.read_file(mound_path)
+# 🔹 Calculate Maximum Mound Size per Plot
+gdf["max_mound_size_15percentile"] = gdf.groupby("plot_id")["mound_area_15percentile"].transform("max")
 
-    # Ensure same CRS
-    if plots.crs != mounds.crs:
-        mounds = mounds.to_crs(plots.crs)
-
-    # Ensure required columns exist
-    if "mound_id" not in mounds.columns:
-        raise ValueError(f"❌ 'mound_id' column missing in {mound_path}!")
-    if "mound_area" not in mounds.columns:
-        raise ValueError(f"❌ 'mound_area' column missing in {mound_path}! Ensure you added it.")
-
-    # 🔹 Perform spatial intersection (clip mounds to plot boundaries)
-    intersections = gpd.overlay(mounds, plots, how="intersection", keep_geom_type=False)
-
-    # 🔍 Debugging print statements
-    print(f"🔹 Intersections for TPI{size}:")
-    print(intersections.head())  
-    print("Columns in intersections:", intersections.columns)
-    print("plot_id counts:\n", intersections["plot_id"].value_counts())
-
-    # 🔹 Ensure 'plot_id' is in intersections
-    if "plot_id" not in intersections.columns:
-        raise ValueError(f"❌ 'plot_id' missing after overlay for TPI{size}!")
-
-    # 🔹 Calculate Maximum Mound Size per Plot (Using Only Clipped Area)
-    intersections["clipped_mound_area"] = intersections.area  # Only use the clipped area
-    max_mound_size = intersections.groupby("plot_id")["clipped_mound_area"].max().reset_index()
-    max_mound_size.rename(columns={"clipped_mound_area": f"tpi{size}_max_mound_size"}, inplace=True)
-
-    # 🔹 Calculate Average Mound Size per Plot (Using Only Clipped Area)
-    avg_mound_size = intersections.groupby("plot_id")["clipped_mound_area"].mean().reset_index()
-    avg_mound_size.rename(columns={"clipped_mound_area": f"tpi{size}_avg_mound_size"}, inplace=True)
-
-    # 🔹 Merge results back into plots
-    plots = plots.merge(max_mound_size, on="plot_id", how="left").fillna({f"tpi{size}_max_mound_size": 0})
-    plots = plots.merge(avg_mound_size, on="plot_id", how="left").fillna({f"tpi{size}_avg_mound_size": 0})
+# 🔹 Calculate Average Mound Size per Plot
+gdf["avg_mound_size_15percentile"] = gdf.groupby("plot_id")["mound_area_15percentile"].transform("mean")
 
 # Save the updated GPKG
-output_gpkg = r"E:\Thesis\data\metrics_dataset_v1.5.gpkg"
-plots.to_file(output_gpkg, driver="GPKG")
+output_gpkg = r"E:\Thesis\data\shrink_metrics\shrinkmetrics_v4.gpkg"
+gdf.to_file(output_gpkg, driver="GPKG")
 
 print(f"✅ Updated GPKG saved as: {output_gpkg}")
 
@@ -264,172 +316,211 @@ print(f"✅ Updated GPKG saved as: {output_gpkg}")
 # this step adds mean CHM value per plot (uses normal and thresholded chm)
 # ADD MEDIAN TO THIS !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+# import geopandas as gpd
+# import rasterio
+# import rasterstats
+# from rasterstats import zonal_stats
+
+# # Define input file paths
+# gpkg_path =  r"E:\Thesis\data\shrink_metrics\shrinkmetrics_v4.gpkg"  # Replace with actual GPKG file path
+# chm_raster_path = r"E:\Thesis\data\CHM\chm_under5.tif"  # Replace with actual CHM raster file path
+
+# # Load the GPKG as a GeoDataFrame
+# gdf = gpd.read_file(gpkg_path)
+
+# # Ensure the GPKG and CHM raster have the same CRS
+# with rasterio.open(chm_raster_path) as src:
+#     chm_crs = src.crs
+
+# if gdf.crs != chm_crs:
+#     gdf = gdf.to_crs(chm_crs)
+
+# # Compute zonal statistics (average CHM for each plot)
+# stats = zonal_stats(gdf, chm_raster_path, stats=["mean"])
+
+# # Extract mean CHM values and add them to the GeoDataFrame
+# gdf["mean_chm_under5"] = [stat["mean"] if stat["mean"] is not None else 0 for stat in stats]
+
+# # Save the updated GeoDataFrame with CHM statistics
+# output_gpkg_path = r"E:\Thesis\data\metrics_dataset_v1.8_plot.gpkg"  # Replace with desired output path
+# gdf.to_file(output_gpkg_path, driver="GPKG")
+
+# print(f"Updated GPKG saved to: {output_gpkg_path}")
 import geopandas as gpd
 import rasterio
-import rasterstats
 from rasterstats import zonal_stats
 
 # Define input file paths
-gpkg_path = r"E:\Thesis\data\metrics_dataset_v1.7_plot.gpkg"  # Replace with actual GPKG file path
-chm_raster_path = r"E:\Thesis\data\CHM\chm_under5.tif"  # Replace with actual CHM raster file path
+gpkg_path = r"E:\Thesis\data\shrink_metrics\shrinkmetrics_v4.gpkg"  # Replace with actual GPKG file path
+chm_rasters = {
+    "chm": r"E:\Thesis\data\CHM\merged_chm.tif",               # Full CHM
+    "chm_under5": r"E:\Thesis\data\CHM\chm_under5.tif",  # CHM under 5m
+    "chm_under2": r"E:\Thesis\data\CHM\chm_under2.tif"   # CHM under 2m
+}
 
 # Load the GPKG as a GeoDataFrame
 gdf = gpd.read_file(gpkg_path)
 
-# Ensure the GPKG and CHM raster have the same CRS
-with rasterio.open(chm_raster_path) as src:
+# Ensure the GPKG and CHM rasters have the same CRS
+with rasterio.open(list(chm_rasters.values())[0]) as src:
     chm_crs = src.crs
 
 if gdf.crs != chm_crs:
     gdf = gdf.to_crs(chm_crs)
 
-# Compute zonal statistics (average CHM for each plot)
-stats = zonal_stats(gdf, chm_raster_path, stats=["mean"])
+# Compute zonal statistics for each CHM raster
+for chm_name, chm_path in chm_rasters.items():
+    print(f"Processing {chm_name}...")
 
-# Extract mean CHM values and add them to the GeoDataFrame
-gdf["mean_chm_under5"] = [stat["mean"] if stat["mean"] is not None else 0 for stat in stats]
+    # Compute mean and median CHM per plot
+    stats = zonal_stats(gdf, chm_path, stats=["mean", "median"])
+
+    # Extract values and add to GeoDataFrame
+    gdf[f"mean_{chm_name}"] = [stat["mean"] if stat["mean"] is not None else 0 for stat in stats]
+    gdf[f"median_{chm_name}"] = [stat["median"] if stat["median"] is not None else 0 for stat in stats]
 
 # Save the updated GeoDataFrame with CHM statistics
-output_gpkg_path = r"E:\Thesis\data\metrics_dataset_v1.8_plot.gpkg"  # Replace with desired output path
+output_gpkg_path = r"E:\Thesis\data\shrink_metrics\shrinkmetrics_v5.gpkg"   # Replace with desired output path
 gdf.to_file(output_gpkg_path, driver="GPKG")
 
-print(f"Updated GPKG saved to: {output_gpkg_path}")
+print(f"✅ Updated GPKG saved to: {output_gpkg_path}")
+
 
 #%% 
 # this step adds plot_shrub_veg_%cover (vegetation below 60cm)
 
-import geopandas as gpd
-import rasterio
-import numpy as np
-from rasterio.mask import mask
+# import geopandas as gpd
+# import rasterio
+# import numpy as np
+# from rasterio.mask import mask
 
-# File paths
-plots_gpkg = r"E:\Thesis\data\metrics_dataset_v1.8_plot.gpkg"
-chm_raster = r"E:\Thesis\data\CHM\merged_chm.tif"
+# # File paths
+# plots_gpkg = r"E:\Thesis\data\shrink_metrics\shrinkmetrics_v5.gpkg"
+# chm_raster = r"E:\Thesis\data\CHM\merged_chm.tif"
 
-# Load the plots GPKG
-plots = gpd.read_file(plots_gpkg)
+# # Load the plots GPKG
+# plots = gpd.read_file(plots_gpkg)
 
-# Ensure 'plot_id' exists
-if "plot_id" not in plots.columns:
-    raise ValueError("❌ 'plot_id' column missing in plots!")
+# # Ensure 'plot_id' exists
+# if "plot_id" not in plots.columns:
+#     raise ValueError("❌ 'plot_id' column missing in plots!")
 
-# Open the CHM raster
-with rasterio.open(chm_raster) as src:
-    chm_crs = src.crs  # Get CRS of CHM raster
+# # Open the CHM raster
+# with rasterio.open(chm_raster) as src:
+#     chm_crs = src.crs  # Get CRS of CHM raster
 
-    # Ensure CRS matches between CHM and plots
-    if plots.crs != chm_crs:
-        plots = plots.to_crs(chm_crs)
+#     # Ensure CRS matches between CHM and plots
+#     if plots.crs != chm_crs:
+#         plots = plots.to_crs(chm_crs)
 
-    # Initialize a list to store shrub vegetation coverage for each plot
-    shrub_veg_cover = []
+#     # Initialize a list to store shrub vegetation coverage for each plot
+#     shrub_veg_cover = []
 
-    for _, row in plots.iterrows():
-        geom = [row["geometry"]]  # Convert plot geometry into list format for masking
+#     for _, row in plots.iterrows():
+#         geom = [row["geometry"]]  # Convert plot geometry into list format for masking
 
-        try:
-            # Mask CHM raster using plot geometry
-            out_image, out_transform = mask(src, geom, crop=True, nodata=np.nan)
+#         try:
+#             # Mask CHM raster using plot geometry
+#             out_image, out_transform = mask(src, geom, crop=True, nodata=np.nan)
 
-            # Flatten the masked array and remove NaN values
-            chm_values = out_image[0].flatten()
-            chm_values = chm_values[~np.isnan(chm_values)]
+#             # Flatten the masked array and remove NaN values
+#             chm_values = out_image[0].flatten()
+#             chm_values = chm_values[~np.isnan(chm_values)]
 
-            # Compute total number of valid pixels (non-NaN)
-            total_pixels = len(chm_values)
-            if total_pixels == 0:
-                shrub_veg_cover.append(0)  # No valid data for this plot
-                continue
+#             # Compute total number of valid pixels (non-NaN)
+#             total_pixels = len(chm_values)
+#             if total_pixels == 0:
+#                 shrub_veg_cover.append(0)  # No valid data for this plot
+#                 continue
 
-            # Compute number of pixels with vegetation height between 0 and 0.6m
-            shrub_pixels = np.sum((chm_values > 0) & (chm_values <= 0.6))
+#             # Compute number of pixels with vegetation height between 0 and 0.6m
+#             shrub_pixels = np.sum((chm_values > 0) & (chm_values <= 0.6))
 
-            # Calculate % shrub vegetation cover
-            shrub_cover_percent = (shrub_pixels / total_pixels) * 100
-            shrub_veg_cover.append(shrub_cover_percent)
+#             # Calculate % shrub vegetation cover
+#             shrub_cover_percent = (shrub_pixels / total_pixels) * 100
+#             shrub_veg_cover.append(shrub_cover_percent)
 
-        except Exception as e:
-            print(f"⚠️ Error processing plot {row['plot_id']}: {e}")
-            shrub_veg_cover.append(0)
+#         except Exception as e:
+#             print(f"⚠️ Error processing plot {row['plot_id']}: {e}")
+#             shrub_veg_cover.append(0)
 
-# Add results to the plots GPKG
-plots["plot_shrub_veg_%cover"] = shrub_veg_cover
+# # Add results to the plots GPKG
+# plots["plot_shrub_veg_%cover"] = shrub_veg_cover
 
-# Save updated GPKG
-output_gpkg = r"E:\Thesis\data\metrics_dataset_v1.10_plot.gpkg"
-plots.to_file(output_gpkg, driver="GPKG")
+# # Save updated GPKG
+# output_gpkg = r"E:\Thesis\data\metrics_dataset_v1.10_plot.gpkg"
+# plots.to_file(output_gpkg, driver="GPKG")
 
-print(f"✅ Updated GPKG saved as: {output_gpkg}")
+# print(f"✅ Updated GPKG saved as: {output_gpkg}")
 
 #%% 
 #this step adds max_, min_ and avg_twi 
 
-import geopandas as gpd
-import rasterio
-import numpy as np
-from rasterio.mask import mask
+# import geopandas as gpd
+# import rasterio
+# import numpy as np
+# from rasterio.mask import mask
 
-# File paths
-plots_gpkg = r"E:\Thesis\data\metrics_dataset_v1.8_plot.gpkg"
-twi_raster = r"E:\Thesis\data\TWI\twi_richdem.tif"
-# Load the plots GPKG
-plots = gpd.read_file(plots_gpkg)
+# # File paths
+# plots_gpkg = r"E:\Thesis\data\shrink_metrics\shrinkmetrics_v5.gpkg"
+# twi_raster = r"E:\Thesis\data\TWI\twi_richdem.tif"
+# # Load the plots GPKG
+# plots = gpd.read_file(plots_gpkg)
 
-# Ensure 'plot_id' exists
-if "plot_id" not in plots.columns:
-    raise ValueError("❌ 'plot_id' column missing in plots!")
+# # Ensure 'plot_id' exists
+# if "plot_id" not in plots.columns:
+#     raise ValueError("❌ 'plot_id' column missing in plots!")
 
-# Open the TWI raster
-with rasterio.open(twi_raster) as src:
-    twi_crs = src.crs  # Get CRS of TWI raster
+# # Open the TWI raster
+# with rasterio.open(twi_raster) as src:
+#     twi_crs = src.crs  # Get CRS of TWI raster
 
-    # Ensure CRS matches between TWI and plots
-    if plots.crs != twi_crs:
-        plots = plots.to_crs(twi_crs)
+#     # Ensure CRS matches between TWI and plots
+#     if plots.crs != twi_crs:
+#         plots = plots.to_crs(twi_crs)
 
-    # Initialize lists to store TWI statistics
-    max_twi_values = []
-    min_twi_values = []
-    avg_twi_values = []
+#     # Initialize lists to store TWI statistics
+#     max_twi_values = []
+#     min_twi_values = []
+#     avg_twi_values = []
 
-    for _, row in plots.iterrows():
-        geom = [row["geometry"]]  # Convert plot geometry into list format for masking
+#     for _, row in plots.iterrows():
+#         geom = [row["geometry"]]  # Convert plot geometry into list format for masking
 
-        try:
-            # Mask TWI raster using plot geometry
-            out_image, out_transform = mask(src, geom, crop=True, nodata=np.nan)
+#         try:
+#             # Mask TWI raster using plot geometry
+#             out_image, out_transform = mask(src, geom, crop=True, nodata=np.nan)
 
-            # Flatten the masked array and remove NaN values
-            twi_values = out_image[0].flatten()
-            twi_values = twi_values[~np.isnan(twi_values)]
+#             # Flatten the masked array and remove NaN values
+#             twi_values = out_image[0].flatten()
+#             twi_values = twi_values[~np.isnan(twi_values)]
 
-            # Check if there are valid TWI values
-            if len(twi_values) == 0:
-                max_twi_values.append(np.nan)
-                min_twi_values.append(np.nan)
-                avg_twi_values.append(np.nan)
-            else:
-                max_twi_values.append(np.max(twi_values))
-                min_twi_values.append(np.min(twi_values))
-                avg_twi_values.append(np.mean(twi_values))
+#             # Check if there are valid TWI values
+#             if len(twi_values) == 0:
+#                 max_twi_values.append(np.nan)
+#                 min_twi_values.append(np.nan)
+#                 avg_twi_values.append(np.nan)
+#             else:
+#                 max_twi_values.append(np.max(twi_values))
+#                 min_twi_values.append(np.min(twi_values))
+#                 avg_twi_values.append(np.mean(twi_values))
 
-        except Exception as e:
-            print(f"⚠️ Error processing plot {row['plot_id']}: {e}")
-            max_twi_values.append(np.nan)
-            min_twi_values.append(np.nan)
-            avg_twi_values.append(np.nan)
+#         except Exception as e:
+#             print(f"⚠️ Error processing plot {row['plot_id']}: {e}")
+#             max_twi_values.append(np.nan)
+#             min_twi_values.append(np.nan)
+#             avg_twi_values.append(np.nan)
 
-# Add results to the plots GPKG
-plots["plot_max_twi"] = max_twi_values
-plots["plot_min_twi"] = min_twi_values
-plots["plot_avg_twi"] = avg_twi_values
+# # Add results to the plots GPKG
+# plots["plot_max_twi"] = max_twi_values
+# plots["plot_min_twi"] = min_twi_values
+# plots["plot_avg_twi"] = avg_twi_values
 
-# Save updated GPKG
-output_gpkg = r"E:\Thesis\data\metrics_dataset_v1.10_plot.gpkg"
-plots.to_file(output_gpkg, driver="GPKG")
+# # Save updated GPKG
+# output_gpkg = r"E:\Thesis\data\metrics_dataset_v1.10_plot.gpkg"
+# plots.to_file(output_gpkg, driver="GPKG")
 
-print(f"✅ Updated GPKG saved as: {output_gpkg}")
+# print(f"✅ Updated GPKG saved as: {output_gpkg}")
 
 #%% 
 # this step adds aspect and slope avg
@@ -440,9 +531,9 @@ import numpy as np
 from rasterio.mask import mask
 
 # File paths
-plots_gpkg = r"E:\Thesis\data\metrics_dataset_v1.10_plot.gpkg"
-slope_raster = r"E:\Thesis\testing\metrics\slope.tif"
-aspect_raster = r"E:\Thesis\testing\metrics\aspect.tif"
+plots_gpkg = r"E:\Thesis\data\shrink_metrics\shrinkmetrics_v5.gpkg"
+slope_raster = r"E:\Thesis\data\DEM\slope_ndtm.tif"
+aspect_raster = r"E:\Thesis\data\DEM\aspect_ndtm.tif"
 
 # Load the plots GPKG
 plots = gpd.read_file(plots_gpkg)
@@ -520,7 +611,7 @@ plots["plot_avg_slope"] = avg_slope_values
 plots["plot_avg_aspect"] = avg_aspect_values
 
 # Save updated GPKG
-output_gpkg = r"E:\Thesis\data\metrics_dataset_v1.11_plot.gpkg"
+output_gpkg = r"E:\Thesis\data\shrink_metrics\shrinkmetrics_v6.gpkg"
 plots.to_file(output_gpkg, driver="GPKG")
 
 print(f"✅ Updated GPKG saved as: {output_gpkg}")

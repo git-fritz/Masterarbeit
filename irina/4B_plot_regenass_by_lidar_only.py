@@ -276,66 +276,130 @@ def save_results(results, output_path, crs):
     print(f"Results saved to {output_path}")
 
 
-def process_chunk(chunk_name, polygons_gdf, chm_path, ndtm_path):
+# def process_chunk(chunk_name, polygons_gdf, chm_path, ndtm_path):
+#     """
+#     Process a single chunk.
+#     """
+#     chunk_data = polygons_gdf[polygons_gdf["chunk"] == chunk_name]
+#     results = []
+
+#     for _, unique_group in chunk_data.groupby("UniqueID"):
+#         uniqueid_geom = unique_group.union_all()
+
+#         # Process segments
+#         with rasterio.open(chm_path) as chm_src:
+#             chm_meta = chm_src.meta
+#             with rasterio.open(ndtm_path) as ndtm_src:
+#                 segment_results = process_segment(
+#                     unique_group, chm_src, ndtm_src, chm_meta["transform"][0]
+#             )
+#                 results.extend(segment_results)
+
+#     return results
+
+
+# def process_chunks_with_seedlings(footprint_path, chm_path, ndtm_path, output_path):
+#     """
+#     Process all chunks in parallel and calculate metrics.
+#     """
+#     polygons_gdf = gpd.read_file(footprint_path)
+#     polygons_gdf = polygons_gdf[polygons_gdf.geometry.notnull()]
+#     polygons_gdf.set_geometry("geometry", inplace=True)
+
+#     polygons_gdf["geometry"] = polygons_gdf["geometry"].apply(
+#         lambda geom: geom.buffer(0) if not geom.is_valid else geom)
+
+#     chunk_names = polygons_gdf['chunk'].unique()
+#     # chunk_names = chunk_names[:2]
+
+#     # print(f"Processing {len(chunk_names)} chunks...")
+
+#     all_results = []
+#     with tqdm(total=len(chunk_names), desc="Processing Chunks") as pbar:
+#         with Pool(24) as pool:
+#             chunk_results = pool.starmap(
+#                 process_chunk,
+#                 [(chunk, polygons_gdf, chm_path, ndtm_path) for chunk in chunk_names]
+#             )
+#             for result in chunk_results:
+#                 all_results.extend(result)
+#                 pbar.update()
+
+#     save_results(all_results, output_path, polygons_gdf.crs)
+
+
+# def main():
+#     footprint_path = r"E:\try_linux_man\test\fix_ID_segments100m2.gpkg"
+#     chm_path = r"E:\Thesis\merge_chm\merged_chm.tif"
+#     ndtm_path = r"E:\Thesis\merge\merged_raster.tif"
+#     output_path = footprint_path.replace('.gpkg', '_extra_ass_v3.gpkg')
+
+#     process_chunks_with_seedlings(footprint_path, chm_path, ndtm_path, output_path)
+
+
+# if __name__ == "__main__":
+#     main()
+
+import rasterio
+import geopandas as gpd
+import pandas as pd
+from shapely.geometry import mapping
+def process_all_segments(footprint_path, chm_path, ndtm_path, output_path):
     """
-    Process a single chunk.
+    Processes all plots individually to extract vegetation and microtopography metrics,
+    then saves the results as a GeoPackage.
     """
-    chunk_data = polygons_gdf[polygons_gdf["chunk"] == chunk_name]
-    results = []
 
-    for _, unique_group in chunk_data.groupby("UniqueID"):
-        uniqueid_geom = unique_group.union_all()
-
-        # Process segments
-        with rasterio.open(chm_path) as chm_src:
-            chm_meta = chm_src.meta
-            with rasterio.open(ndtm_path) as ndtm_src:
-                segment_results = process_segment(
-                    unique_group, chm_src, ndtm_src, chm_meta["transform"][0]
-            )
-                results.extend(segment_results)
-
-    return results
-
-
-def process_chunks_with_seedlings(footprint_path, chm_path, ndtm_path, output_path):
-    """
-    Process all chunks in parallel and calculate metrics.
-    """
+    # Load footprint polygons
     polygons_gdf = gpd.read_file(footprint_path)
-    polygons_gdf = polygons_gdf[polygons_gdf.geometry.notnull()]
-    polygons_gdf.set_geometry("geometry", inplace=True)
+    polygons_gdf = polygons_gdf[polygons_gdf.geometry.notnull()]  # Remove invalid geometries
 
+    # Fix any invalid geometries
     polygons_gdf["geometry"] = polygons_gdf["geometry"].apply(
-        lambda geom: geom.buffer(0) if not geom.is_valid else geom)
+        lambda geom: geom.buffer(0) if not geom.is_valid else geom
+    )
 
-    chunk_names = polygons_gdf['chunk'].unique()
-    # chunk_names = chunk_names[:2]
+    # Open raster files
+    with rasterio.open(chm_path) as chm_src, rasterio.open(ndtm_path) as ndtm_src:
+        resolution = chm_src.meta["transform"][0]  # Extract raster resolution
 
-    # print(f"Processing {len(chunk_names)} chunks...")
+        all_results = []
+        for _, unique_group in polygons_gdf.groupby("UniqueID"):  # Process per UniqueID (adjust if needed)
+            segment_results = process_segment(unique_group, chm_src, ndtm_src, resolution)
+            all_results.extend(segment_results)  # Store extracted metrics
 
-    all_results = []
-    with tqdm(total=len(chunk_names), desc="Processing Chunks") as pbar:
-        with Pool(24) as pool:
-            chunk_results = pool.starmap(
-                process_chunk,
-                [(chunk, polygons_gdf, chm_path, ndtm_path) for chunk in chunk_names]
-            )
-            for result in chunk_results:
-                all_results.extend(result)
-                pbar.update()
+    # Convert results to a GeoDataFrame
+    df_results = pd.DataFrame(all_results)
 
-    save_results(all_results, output_path, polygons_gdf.crs)
+    if df_results.empty:
+        print("No results to save. Check if process_segment() is working correctly.")
+        return
 
+    # # Convert 'geometry' column to proper GeoPandas format
+    # gdf_results = gpd.GeoDataFrame(df_results, geometry=[mapping(geom) for geom in df_results["geometry"]], crs=polygons_gdf.crs)
+    from shapely.geometry import shape
+
+    # Ensure the 'geometry' column is a valid Shapely object before creating the GeoDataFrame
+    df_results["geometry"] = df_results["geometry"].apply(lambda g: shape(g) if isinstance(g, dict) else g)
+
+    # Convert to GeoDataFrame properly
+    gdf_results = gpd.GeoDataFrame(df_results, geometry=df_results["geometry"], crs=polygons_gdf.crs)
+
+    # Save results to a new GeoPackage
+    gdf_results.to_file(output_path, driver="GPKG")
+    print(f"Processed metrics saved to: {output_path}")
 
 def main():
-    footprint_path = r"E:\try_linux_man\test\fix_ID_segments100m2.gpkg"
-    chm_path = r"E:\Thesis\merge_chm\merged_chm.tif"
-    ndtm_path = r"E:\Thesis\merge\merged_raster.tif"
-    output_path = footprint_path.replace('.gpkg', '_extra_ass_v3.gpkg')
+    """
+    Main function to run the processing.
+    """
+    footprint_path = r"E:\try_linux_man\test\fix_plots20m2.gpkg"
+    chm_path = r"E:\Thesis\data\CHM\merged_chm.tif"
+    ndtm_path = r"E:\Thesis\data\DEM\merged_raster.tif"
+    output_path = footprint_path.replace('.gpkg', '_processed_metrics23.gpkg')
 
-    process_chunks_with_seedlings(footprint_path, chm_path, ndtm_path, output_path)
-
+    # Run processing
+    process_all_segments(footprint_path, chm_path, ndtm_path, output_path)
 
 if __name__ == "__main__":
     main()

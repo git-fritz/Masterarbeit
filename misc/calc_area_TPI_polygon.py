@@ -17,8 +17,8 @@ Created on Sun Feb  9 14:53:30 2025
 import geopandas as gpd
 
 # ✅ Update paths
-input_gpkg = r"E:\Thesis\shapes\kmcluster_mounds.gpkg" # Replace with your input GPKG file
-output_gpkg = r"E:\Thesis\shapes\kmcluster_mounds_area.gpkg"  # Where to save the new GPKG
+input_gpkg = r"E:\Thesis\data\mounds_percentile\mounds_percentile.gpkg" # Replace with your input GPKG file
+output_gpkg = r"E:\Thesis\data\mounds_percentile\mounds_percentile_area.gpkg"  # Where to save the new GPKG
 
 # ✅ Load the dataset
 gdf = gpd.read_file(input_gpkg)

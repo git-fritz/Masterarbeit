@@ -19,9 +19,9 @@ import numpy as np
 import math
 
 # File paths
-input_gpkg = r"E:\Thesis\data\metrics_dataset_v1.11_plot.gpkg"
-output_subset_gpkg = r"E:\Thesis\data\metrics_dataset_subset_20.gpkg"
-output_remaining_gpkg = r"E:\Thesis\data\metrics_dataset_remaining_80.gpkg"
+input_gpkg = r"E:\Thesis\data\shrink_metrics\shrinkmetrics_v6.gpkg"
+output_subset_gpkg = r"E:\Thesis\data\shrink_metrics\auto_pre8020\shrinkmetrics_v6_20.gpkg"
+output_remaining_gpkg = r"E:\Thesis\data\shrink_metrics\auto_pre8020\shrinkmetrics_v6_80.gpkg"
 
 # Load the GPKG
 gdf = gpd.read_file(input_gpkg)

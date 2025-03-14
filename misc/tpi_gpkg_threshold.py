@@ -62,8 +62,8 @@ def get_layer_names(gpkg_path):
     return layers
 
 # Example usage
-gpkg_file = r"E:\Thesis\shapes\kmcluster_mounds_area.gpkg"
-output_gpkg = r"E:\Thesis\shapes\kmcluster_mounds_area05.gpkg" # Optional, set to None to overwrite
+gpkg_file = r"E:\Thesis\data\mounds_percentile\mounds_percentile_area.gpkg"
+output_gpkg = r"E:\Thesis\data\mounds_percentile\mounds_percentile_area05.gpkg" # Optional, set to None to overwrite
 area_threshold = 0.5  # Set the area threshold
 
 layer_names = get_layer_names(gpkg_file)

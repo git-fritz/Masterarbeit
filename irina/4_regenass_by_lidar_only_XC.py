@@ -308,52 +308,85 @@ def process_unified_dataset(footprint_path, chm_path, ndtm_path, output_path, ad
     save_results([item for sublist in results for item in sublist], output_path, polygons_gdf.crs)
 
 
-def process_site(config_path):
-    """
-    Process a single site based on its configuration file.
-    If wanting to process just 1 site, scroll to bottom.
-
-    """
-    with open(config_path, "r") as config_file:
-        config = yaml.safe_load(config_file)
-
-    sitename = config['parameters']['sitename']
+def process_site():
+    # Hardcoded settings instead of YAML
+    sitename = "DefaultSite"
     adjacency_buffer = 20
     adjacency_gap_buffer = 2
     num_cores = 20
 
-    # Always use ground_footprint from datasets_PD300
-    if "datasets_PD300" not in config:
-        raise ValueError(f"datasets_PD300 is missing in {config_path}. Ground footprint cannot be found.")
+    # Define file paths manually
+    footprint_path = r"E:\Thesis\FLM_shrink\felix_shrunk_footprint_plots20m2.gpkg"
+    chm_path = r"E:\Thesis\data\CHM\merged_chm.tif"
+    ndtm_path = r"E:\Thesis\data\DEM\nDTM_clip.tif"
+    output_path = r"E:\Thesis\data\shrink_metrics\shrinkmetrics.gpkg"
+    
+    print(f"Processing site: {sitename}...")
+    process_unified_dataset(
+        footprint_path, chm_path, ndtm_path, output_path,
+        adjacency_buffer, adjacency_gap_buffer, num_cores
+    )
+    print(f"Processing complete. Output saved to: {output_path}")
+    
+if __name__ == "__main__":
+    process_site()  # No config_path since we're skipping YAML
 
-    footprint_path = config["datasets_PD300"]["ground_footprint"]  # Always use PD300 footprint
+# %%
 
-    # List of datasets to process
-    # dataset_keys = ["datasets_PD300", "datasets_PD25", "datasets_PD5"]
-    dataset_keys = []
 
-    for dataset_key in dataset_keys:
-        if dataset_key in config:  # Ensure the key exists in the config file
-            dataset = config[dataset_key]
+# def process_site(config_path):
+#     """
+#     Process a single site based on its configuration file.
+#     If wanting to process just 1 site, scroll to bottom.
 
-            chm_path = dataset[r"E:\Thesis\merge_chm\merged_chm.tif"]
-            ndtm_path = dataset[r"E:\Thesis\merge\merged_raster.tif"]
-            output_dir = dataset[r"E:\try_linux_man\test\test_metrics3_new2.gpkg"]  # PD-specific output directory
+#     """
+#     with open(config_path, "r") as config_file:
+#         config = yaml.safe_load(config_file)
 
-            output_path = os.path.join(output_dir, f"{sitename}_metrics3_{dataset_key}.gpkg")
+#     sitename = config['parameters']['sitename']
+#     adjacency_buffer = 20
+#     adjacency_gap_buffer = 2
+#     num_cores = 20
 
-            print(f"Processing {dataset_key} for site: {sitename}...")
-            process_unified_dataset(
-                footprint_path,
-                chm_path,
-                ndtm_path,
-                output_path,
-                adjacency_buffer,
-                adjacency_gap_buffer,
-                num_cores
-            )
-            print(f"{dataset_key} processing complete for site: {sitename}\n")
+#     # Always use ground_footprint from datasets_PD300
+#     if "datasets_PD300" not in config:
+#         raise ValueError(f"datasets_PD300 is missing in {config_path}. Ground footprint cannot be found.")
 
+#     footprint_path = config["datasets_PD300"]["ground_footprint"]  # Always use PD300 footprint
+
+#     # List of datasets to process
+#     # dataset_keys = ["datasets_PD300", "datasets_PD25", "datasets_PD5"]
+#     dataset_keys = []
+
+#     for dataset_key in dataset_keys:
+#         if dataset_key in config:  # Ensure the key exists in the config file
+#             dataset = config[dataset_key]
+
+#             chm_path = dataset[r"E:\Thesis\merge_chm\merged_chm.tif"]
+#             ndtm_path = dataset[r"E:\Thesis\merge\merged_raster.tif"]
+#             output_dir = dataset[r"E:\try_linux_man\test\test_metrics3_new3.gpkg"]  # PD-specific output directory
+
+#             output_path = os.path.join(output_dir, f"{sitename}_metrics3_{dataset_key}.gpkg")
+
+#             print(f"Processing {dataset_key} for site: {sitename}...")
+#             process_unified_dataset(
+#                 footprint_path,
+#                 chm_path,
+#                 ndtm_path,
+#                 output_path,
+#                 adjacency_buffer,
+#                 adjacency_gap_buffer,
+#                 num_cores
+#             )
+#             print(f"{dataset_key} processing complete for site: {sitename}\n")
+
+# if __name__ == "__main__":
+#     config_path = r"E:\Thesis\code_storage\Masterarbeit\irina\lidea_config.yaml"  # <-- Replace with your actual YAML config file
+#     process_site(config_path)
+
+
+# %%
+# 
 
 # def main():
 #     config_dir = r"C:\Users\X\Documents\FalconAndSwift\BRFN\recovery_assessment\footprint\BRFN\config_files_by_site"
@@ -375,54 +408,54 @@ def process_site(config_path):
 
 
 # commenting the below out. the below can be used for testing a single site
-def main():
-    footprint_path = r"E:\try_linux_man\test\fix_ID_segments100m2.gpkg"
-    chm_path = r"E:\Thesis\merge_chm\merged_chm.tif"
-    ndtm_path = r"E:\Thesis\merge\merged_raster.tif"
-    output_path = r"E:\try_linux_man\test\test_metrics3_new2.gpkg"
+# def main():
+#     footprint_path = r"E:\try_linux_man\test\fix_ID_segments100m2.gpkg"
+#     chm_path = r"E:\Thesis\merge_chm\merged_chm.tif"
+#     ndtm_path = r"E:\Thesis\merge\merged_raster.tif"
+#     output_path = r"E:\try_linux_man\test\test_metrics3_new2.gpkg"
 
-    config_path = r"C:\Users\X\Documents\FalconAndSwift\BRFN\recovery_assessment\footprint\BRFN\config_files_by_site\PA2-W2(West)-RestoredWellpadAccess_config.yaml"
-    with open(config_path, "r") as config_file:
-        config = yaml.safe_load(config_file)
+#     config_path = r"C:\Users\X\Documents\FalconAndSwift\BRFN\recovery_assessment\footprint\BRFN\config_files_by_site\PA2-W2(West)-RestoredWellpadAccess_config.yaml"
+#     with open(config_path, "r") as config_file:
+#         config = yaml.safe_load(config_file)
 
-    sitename = config['parameters']['sitename']
-    adjacency_buffer = 20
-    adjacency_gap_buffer = 2
-    num_cores = 20
+#     sitename = config['parameters']['sitename']
+#     adjacency_buffer = 20
+#     adjacency_gap_buffer = 2
+#     num_cores = 20
 
-    # Always use ground_footprint from datasets_PD300
-    if "datasets_PD300" not in config:
-        raise ValueError("datasets_PD300 is missing from the config file. Ground footprint cannot be found.")
+#     # Always use ground_footprint from datasets_PD300
+#     if "datasets_PD300" not in config:
+#         raise ValueError("datasets_PD300 is missing from the config file. Ground footprint cannot be found.")
 
-    footprint_path = config["datasets_PD300"]["ground_footprint"]  # Always use PD300 footprint
+#     footprint_path = config["datasets_PD300"]["ground_footprint"]  # Always use PD300 footprint
 
-    # List of datasets to process
-    dataset_keys = ["datasets_PD300", "datasets_PD25", "datasets_PD5"]
+#     # List of datasets to process
+#     dataset_keys = ["datasets_PD300", "datasets_PD25", "datasets_PD5"]
 
-    for dataset_key in dataset_keys:
-        if dataset_key in config:  # Ensure the key exists in the config file
-            dataset = config[dataset_key]
+#     for dataset_key in dataset_keys:
+#         if dataset_key in config:  # Ensure the key exists in the config file
+#             dataset = config[dataset_key]
 
-            chm_path = dataset['chm']
-            ndtm_path = dataset['ndtm']
-            output_dir = dataset['assess_output_dir']  # Now using the PD-specific output directory
+#             chm_path = dataset['chm']
+#             ndtm_path = dataset['ndtm']
+#             output_dir = dataset['assess_output_dir']  # Now using the PD-specific output directory
 
-            output_path = os.path.join(output_dir, f"{sitename}_metrics3_{dataset_key}.gpkg")
+#             output_path = os.path.join(output_dir, f"{sitename}_metrics3_{dataset_key}.gpkg")
 
-            print(f"Processing {dataset_key}...")
-            process_unified_dataset(
-                footprint_path,
-                chm_path,
-                ndtm_path,
-                output_path,
-                adjacency_buffer,
-                adjacency_gap_buffer,
-                num_cores
-            )
-            print(f"{dataset_key} processing complete!\n")
+#             print(f"Processing {dataset_key}...")
+#             process_unified_dataset(
+#                 footprint_path,
+#                 chm_path,
+#                 ndtm_path,
+#                 output_path,
+#                 adjacency_buffer,
+#                 adjacency_gap_buffer,
+#                 num_cores
+#             )
+#             print(f"{dataset_key} processing complete!\n")
 
-    print("All processing complete!")
+#     print("All processing complete!")
 
 
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     main()
