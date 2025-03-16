@@ -137,7 +137,7 @@ exclude_feature_lists = {
            'plot_pixels', 'veg_pixels_above_60cm', 'veg_cover_percent_above_60cm',
            'binary_recovery', 'geometry'],
     
-    "DEM_only+": [['id', 'avg_width', 'max_width', 'width_hist', 'width_bins', 'UniqueID',
+    "DEM_only+": ['id', 'avg_width', 'max_width', 'width_hist', 'width_bins', 'UniqueID',
            'shrink_dis', 'PartID', 'area', 'centroid_x', 'centroid_y',
            'edge_points', 'side', 'SegmentID', 'plot_id', 'segment_area',
            'side_area', 'plot_area', 'plot_short_veg_%cover',
@@ -151,7 +151,7 @@ exclude_feature_lists = {
            'adjacency_tree1.5m_coverage','mean_chm', 'median_chm', 'mean_chm_under5', 'median_chm_under5',
            'mean_chm_under2', 'median_chm_under2', 'tree_count', 'tree_density', 'trees_per_ha',
            'plot_pixels', 'veg_pixels_above_60cm', 'veg_cover_percent_above_60cm',
-           'binary_recovery', 'geometry']],
+           'binary_recovery', 'geometry'],
     
     "veg_adjacency": ['id', 'avg_width', 'max_width', 'width_hist', 'width_bins', 'UniqueID',
            'shrink_dis', 'PartID', 'area', 'centroid_x', 'centroid_y',
@@ -168,7 +168,8 @@ exclude_feature_lists = {
            'mean_chm_under2', 'median_chm_under2', 'plot_avg_slope',
            'plot_avg_aspect', 'tree_count', 'tree_density', 'trees_per_ha',
            'plot_pixels', 'veg_pixels_above_60cm', 'veg_cover_percent_above_60cm',
-           'binary_recovery', 'geometry'],
+           'binary_recovery', 'geometry','segment_short_veg_%cover', 'segment_medium_veg_%cover',
+           'segment_tall_veg_%cover', 'segment_forest_%cover', 'adjacency_area_ha',],
     
     "DEM_only+_veg_adjacency": ['id', 'avg_width', 'max_width', 'width_hist', 'width_bins', 'UniqueID',
            'shrink_dis', 'PartID', 'area', 'centroid_x', 'centroid_y',
@@ -185,11 +186,61 @@ exclude_feature_lists = {
            'mean_chm_under2', 'median_chm_under2', 'plot_avg_slope',
            'plot_avg_aspect', 'tree_count', 'tree_density', 'trees_per_ha',
            'plot_pixels', 'veg_pixels_above_60cm', 'veg_cover_percent_above_60cm',
-           'binary_recovery', 'geometry']
+           'binary_recovery', 'geometry','segment_short_veg_%cover', 'segment_medium_veg_%cover',
+           'segment_tall_veg_%cover', 'segment_forest_%cover', 'adjacency_area_ha',]
 }
+# %% feature importance
+# import matplotlib.pyplot as plt
+# import seaborn as sns
+# import xgboost as xgb
+# from sklearn.feature_selection import VarianceThreshold, RFE
+# from sklearn.model_selection import train_test_split
+
+# # Ensure the dataset is numeric
+# X_full = df_train.drop(columns=[target_regression, target_classification], errors="ignore")
+# y_full_reg = df_train[target_regression]
+
+# # Train a baseline XGBoost model to analyze feature importance
+# model_reg = xgb.XGBRegressor(objective="reg:squarederror", n_estimators=100)
+# model_reg.fit(X_full, y_full_reg)
+
+# # 🎯 1. Plot Feature Importance (XGBoost)
+# plt.figure(figsize=(10, 6))
+# xgb.plot_importance(model_reg, max_num_features=20)  # Show top 20 features
+# plt.title("XGBoost Feature Importance (Regression)")
+# plt.show()
+
+# # 🎯 2. Correlation Analysis (Remove Highly Correlated Features)
+# corr_matrix = X_full.corr()
+# high_corr_pairs = corr_matrix.abs().unstack().sort_values(ascending=False)
+# high_corr_pairs = high_corr_pairs[high_corr_pairs != 1]  # Exclude self-correlation
+
+# print("Highly Correlated Feature Pairs:")
+# print(high_corr_pairs[:20])
+
+# plt.figure(figsize=(12, 8))
+# sns.heatmap(corr_matrix, cmap="coolwarm", annot=False, fmt=".2f")
+# plt.title("Feature Correlation Matrix")
+# plt.show()
+
+# # 🎯 3. Variance Thresholding (Remove Low-Variance Features)
+# selector = VarianceThreshold(threshold=0.01)  # Adjust threshold if needed
+# X_reduced = selector.fit_transform(X_full)
+
+# kept_features = X_full.columns[selector.get_support()]
+# removed_features = X_full.columns[~selector.get_support()]
+# print(f"Removed features due to low variance: {list(removed_features)}")
+
+# # 🎯 4. Recursive Feature Elimination (RFE)
+# rfe = RFE(model_reg, n_features_to_select=10)  # Adjust n_features_to_select
+# rfe.fit(X_full, y_full_reg)
+
+# selected_features = X_full.columns[rfe.support_]
+# removed_features_rfe = X_full.columns[~rfe.support_]
+# print(f"Selected features (RFE): {list(selected_features)}")
+# print(f"Removed features (RFE): {list(removed_features_rfe)}")
+
 # %%
-
-
 # Initialize a results dictionary
 results = {"Metric": ["MAE", "RMSE", "R²", "Accuracy", "F1-Score"],
            "Metric_vali": ["MAE_vali", "RMSE_vali", "R²_vali", "Accuracy_vali", "F1-Score_vali"]}
@@ -259,12 +310,11 @@ for list_name, exclude_features in exclude_feature_lists.items():
 # Convert results to DataFrame
 df_results = pd.DataFrame(results)
 
+# Print results in console
+print(df_results)
+
 # Save results to CSV
-csv_filename = "model_results.csv"
+csv_filename = r"E:\Thesis\code_storage\Masterarbeit\results\xgboost_results_v1.csv"
 df_results.to_csv(csv_filename, index=False)
-
-# Display results
-import ace_tools as tools
-tools.display_dataframe_to_user(name="Model Training & Validation Results", dataframe=df_results)
-
+print(f"Results saved to {csv_filename}")
 
