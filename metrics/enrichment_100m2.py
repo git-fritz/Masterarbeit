@@ -749,30 +749,88 @@ plots.to_file(output_gpkg, driver="GPKG")
 
 print(f"✅ Updated GPKG saved as: {output_gpkg}")
 
-#%%
-# This step calculates percent cover of vegetation above 60cm
+
 import geopandas as gpd
 import rasterio
 import numpy as np
 from rasterstats import zonal_stats
-# File paths
-plots_gpkg = r"E:\Thesis\data\shrink_metrics\shrinkmetrics100_v.gpkg"
+import tempfile
+import os
 
+import geopandas as gpd
+import rasterio
+import numpy as np
+from rasterstats import zonal_stats
+
+import geopandas as gpd
+import rasterio
+import numpy as np
+from rasterstats import zonal_stats
+import tempfile
+import os
+
+#%%
+# This step calculates percent cover of vegetation above 60cm and binary recovery classification
+
+# File paths
+plots_gpkg = r"E:\Thesis\data\shrink_metrics\shrinkmetrics100_v7.gpkg"
 chm_raster = r"E:\Thesis\data\CHM\merged_chm.tif"
 
-# Compute zonal statistics for CHM to determine vegetation cover
-chm_stats = zonal_stats(plots, chm_raster, stats=["count"], categorical=True)
+# Load the plots GPKG
+plots = gpd.read_file(plots_gpkg)
+
+# Ensure 'plot_id' exists
+if "plot_id" not in plots.columns:
+    raise ValueError("❌ Missing 'plot_id' column in plots!")
+
+# Open CHM raster
+with rasterio.open(chm_raster) as src:
+    chm_array = src.read(1).astype(np.float32)  # Convert to float32 to handle NoData
+    chm_meta = src.meta  # Store metadata
+
+    # Mask NoData values
+    nodata_value = src.nodata if src.nodata is not None else np.nan
+    chm_array = np.where(chm_array == nodata_value, np.nan, chm_array)  # Replace NoData with NaN
+
+    # Create a binary mask where CHM > 60cm (0.6m)
+    veg_mask = np.where(chm_array > 0.6, 1, 0).astype(np.uint8)
+
+# Create a temporary raster for the binary mask
+with tempfile.NamedTemporaryFile(suffix=".tif", delete=False) as temp_raster:
+    temp_raster_path = temp_raster.name
+
+with rasterio.open(
+    temp_raster_path, "w", driver="GTiff",
+    height=veg_mask.shape[0], width=veg_mask.shape[1],
+    count=1, dtype=np.uint8, crs=src.crs,
+    transform=src.transform, nodata=0
+) as dst:
+    dst.write(veg_mask, 1)
+
+# Compute zonal statistics to get the total number of pixels inside each plot
+plot_pixel_stats = zonal_stats(plots, chm_raster, stats=["count"], affine=src.transform, nodata=nodata_value)
+
+# Extract the total number of pixels inside each plot
+plots["plot_pixels"] = [stat["count"] if stat and "count" in stat else 0 for stat in plot_pixel_stats]
+
+# Compute zonal statistics using the binary mask raster
+chm_stats = zonal_stats(plots, temp_raster_path, stats=["sum"], affine=src.transform, nodata=0)
 
 # Extract the number of pixels with vegetation above 60cm
-plots["veg_pixels_above_60cm"] = [stat.get(1, 0) for stat in chm_stats]
+plots["veg_pixels_above_60cm"] = [stat["sum"] if stat and "sum" in stat else 0 for stat in chm_stats]
 
-# Compute percent cover of vegetation above 60cm
-plots["veg_cover_percent_above_60cm"] = (plots["veg_pixels_above_60cm"] / plots["plot_area"]) * 100
-# Define binary recovery (1 if vegetation cover > 20%, else 0)
+# Compute percent cover of vegetation above 60cm based on total pixels inside plot
+plots["veg_cover_percent_above_60cm"] = (plots["veg_pixels_above_60cm"] / plots["plot_pixels"]) * 100
+
+# Create a binary mask to classify recovery (1 if vegetation cover > 20%, else 0)
 plots["binary_recovery"] = (plots["veg_cover_percent_above_60cm"] > 20).astype(int)
 
 # Save the updated GPKG
 output_gpkg = r"E:\Thesis\data\shrink_metrics\shrinkmetrics100_v8.gpkg"
 plots.to_file(output_gpkg, driver="GPKG")
 
+# Remove temporary raster file after processing
+os.remove(temp_raster_path)
+
 print(f"✅ Updated GPKG saved as: {output_gpkg}")
+
