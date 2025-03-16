@@ -615,3 +615,164 @@ output_gpkg = r"E:\Thesis\data\shrink_metrics\shrinkmetrics100_v6.gpkg"
 plots.to_file(output_gpkg, driver="GPKG")
 
 print(f"✅ Updated GPKG saved as: {output_gpkg}")
+# %%
+
+import geopandas as gpd
+import rasterio
+import numpy as np
+from rasterio.mask import mask
+
+# File paths
+output_gpkg = r"E:\Thesis\data\shrink_metrics\shrinkmetrics100_v6.gpkg"
+slope_raster = r"E:\Thesis\data\DEM\slope_ndtm.tif"
+aspect_raster = r"E:\Thesis\data\DEM\aspect_ndtm.tif"
+
+# Load the plots GPKG
+plots = gpd.read_file(plots_gpkg)
+
+# Ensure 'plot_id' exists
+if "plot_id" not in plots.columns:
+    raise ValueError("❌ 'plot_id' column missing in plots!")
+
+# Open the slope raster
+with rasterio.open(slope_raster) as src:
+    slope_crs = src.crs  # Get CRS of slope raster
+
+    # Ensure CRS matches between slope and plots
+    if plots.crs != slope_crs:
+        plots = plots.to_crs(slope_crs)
+
+    # Initialize lists to store slope statistics
+    avg_slope_values = []
+
+    for _, row in plots.iterrows():
+        geom = [row["geometry"]]  # Convert plot geometry into list format for masking
+
+        try:
+            # Mask slope raster using plot geometry
+            out_image, out_transform = mask(src, geom, crop=True, nodata=np.nan)
+
+            # Flatten the masked array and remove NaN values
+            slope_values = out_image[0].flatten()
+            slope_values = slope_values[~np.isnan(slope_values)]
+
+            # Check if there are valid slope values
+            if len(slope_values) == 0:
+                avg_slope_values.append(np.nan)
+            else:
+                avg_slope_values.append(np.mean(slope_values))
+
+        except Exception as e:
+            print(f"⚠️ Error processing plot {row['plot_id']}: {e}")
+            avg_slope_values.append(np.nan)
+
+# Open the aspect raster
+with rasterio.open(aspect_raster) as src:
+    aspect_crs = src.crs  # Get CRS of aspect raster
+
+    # Ensure CRS matches between aspect and plots
+    if plots.crs != aspect_crs:
+        plots = plots.to_crs(aspect_crs)
+
+    # Initialize lists to store aspect statistics
+    avg_aspect_values = []
+
+    for _, row in plots.iterrows():
+        geom = [row["geometry"]]  # Convert plot geometry into list format for masking
+
+        try:
+            # Mask aspect raster using plot geometry
+            out_image, out_transform = mask(src, geom, crop=True, nodata=np.nan)
+
+            # Flatten the masked array and remove NaN values
+            aspect_values = out_image[0].flatten()
+            aspect_values = aspect_values[~np.isnan(aspect_values)]
+
+            # Check if there are valid aspect values
+            if len(aspect_values) == 0:
+                avg_aspect_values.append(np.nan)
+            else:
+                avg_aspect_values.append(np.mean(aspect_values))
+
+        except Exception as e:
+            print(f"⚠️ Error processing plot {row['plot_id']}: {e}")
+            avg_aspect_values.append(np.nan)
+
+# Add results to the plots GPKG
+plots["plot_avg_slope"] = avg_slope_values
+plots["plot_avg_aspect"] = avg_aspect_values
+
+# Save updated GPKG
+output_gpkg = r"E:\Thesis\data\shrink_metrics\shrinkmetrics100_v6.gpkg"
+plots.to_file(output_gpkg, driver="GPKG")
+
+print(f"✅ Updated GPKG saved as: {output_gpkg}")
+
+
+#%%
+# This step calculates the number of trees inside a plot, tree density, and trees per hectare
+
+# File paths
+plots_gpkg = r"E:\Thesis\data\shrink_metrics\shrinkmetrics100_v6.gpkg"
+trees_gpkg = r"E:\Thesis\seedlings_max.gpkg"
+# Load the trees GPKG
+trees = gpd.read_file(trees_gpkg)
+
+# Ensure same CRS
+if plots.crs != trees.crs:
+    trees = trees.to_crs(plots.crs)
+
+# Compute tree centroids
+trees["centroid"] = trees.geometry.centroid
+
+# Convert centroids to a GeoDataFrame
+tree_centroids = gpd.GeoDataFrame(trees, geometry="centroid", crs=trees.crs)
+
+# Perform spatial join using centroids to check if they fall within plots
+tree_intersections = gpd.sjoin(tree_centroids, plots, how="inner", predicate="within")
+
+# Count trees per plot
+tree_counts = tree_intersections.groupby("plot_id").size().reset_index(name="tree_count")
+
+# Merge results back into plots
+plots = plots.merge(tree_counts, on="plot_id", how="left").fillna({"tree_count": 0})
+
+# Calculate Tree Density (trees per square meter)
+plots["tree_density"] = plots["tree_count"] / plots["plot_area"]
+
+# Calculate Trees per Hectare (extrapolated from plot basis)
+plots["trees_per_ha"] = plots["tree_density"] * 10000
+
+# Save the updated GPKG
+output_gpkg = r"E:\Thesis\data\shrink_metrics\shrinkmetrics100_v7.gpkg"
+plots.to_file(output_gpkg, driver="GPKG")
+
+print(f"✅ Updated GPKG saved as: {output_gpkg}")
+
+#%%
+# This step calculates percent cover of vegetation above 60cm
+import geopandas as gpd
+import rasterio
+import numpy as np
+from rasterstats import zonal_stats
+# File paths
+plots_gpkg = r"E:\Thesis\data\shrink_metrics\shrinkmetrics100_v.gpkg"
+
+chm_raster = r"E:\Thesis\data\CHM\merged_chm.tif"
+
+# Compute zonal statistics for CHM to determine vegetation cover
+chm_stats = zonal_stats(plots, chm_raster, stats=["count"], categorical=True)
+
+# Extract the number of pixels with vegetation above 60cm
+plots["veg_pixels_above_60cm"] = [stat.get(1, 0) for stat in chm_stats]
+
+# Compute percent cover of vegetation above 60cm
+plots["veg_cover_percent_above_60cm"] = (plots["veg_pixels_above_60cm"] / plots["plot_area"]) * 100
+# Define binary recovery (1 if vegetation cover > 20%, else 0)
+plots["binary_recovery"] = (plots["veg_cover_percent_above_60cm"] > 20).astype(int)
+
+# Save the updated GPKG
+output_gpkg = r"E:\Thesis\data\shrink_metrics\shrinkmetrics100_v8.gpkg"
+plots.to_file(output_gpkg, driver="GPKG")
+
+print(f"✅ Updated GPKG saved as: {output_gpkg}")
