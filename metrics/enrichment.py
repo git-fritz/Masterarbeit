@@ -762,3 +762,88 @@ os.remove(temp_raster_path)
 
 print(f"✅ Updated GPKG saved as: {output_gpkg}")
 
+# %%
+
+# %%
+
+#%%
+# this step calculates hollow_area and hollow_count inside a plot
+import geopandas as gpd
+
+# File paths (update these)
+plots_gpkg = r"E:\Thesis\data\shrink_metrics\shrinkmetrics_v8.gpkg"
+mounds_gpkg = r"E:\Thesis\testing\hollows_low15_05.gpkg"
+
+# Load GeoPackages
+plots = gpd.read_file(plots_gpkg)
+mounds = gpd.read_file(mounds_gpkg)
+
+# Ensure same CRS
+if plots.crs != mounds.crs:
+    mounds = mounds.to_crs(plots.crs)
+
+# 🔹 Ensure 'plot_id' exists
+if "plot_id" not in plots.columns:
+    raise ValueError("❌ 'plot_id' column missing in plots!")
+
+# 🔹 Ensure 'hollow_id' exists
+if "hollow_id" not in mounds.columns:
+    raise ValueError("❌ 'hollow_id' column missing in mounds!")
+
+# 🔹 Perform spatial intersection (clip mounds to plot boundaries)
+intersections = gpd.overlay(mounds, plots, how="intersection", keep_geom_type=False)
+
+# 🔍 Debugging print statements
+print(intersections.head())  
+print("Columns in intersections:", intersections.columns)
+print("plot_id counts:\n", intersections["plot_id"].value_counts())
+
+# 🔹 Ensure 'plot_id' is in intersections
+if "plot_id" not in intersections.columns:
+    raise ValueError("❌ 'plot_id' missing after overlay!")
+
+# 🔹 Count total number of mounds per plot (each mound is counted separately in each plot)
+mound_counts = intersections.groupby("plot_id")["hollow_id"].nunique().reset_index(name="hollow_count_15percentile")
+
+# 🔹 Calculate total mound area inside each plot
+intersections["hollow_area_low15percentile"] = intersections.area
+mound_areas = intersections.groupby("plot_id")["hollow_area_low15percentile"].sum().reset_index()
+
+# 🔹 Merge results back into plots
+plots = plots.merge(mound_counts, on="plot_id", how="left").fillna({"hollow_count_15percentile": 0})
+plots = plots.merge(mound_areas, on="plot_id", how="left").fillna({"hollow_area_low15percentile": 0})
+
+# Save updated plots with new attributes
+output_gpkg = r"E:\Thesis\data\shrink_metrics\shrinkmetrics_v9.gpkg"
+plots.to_file(output_gpkg, driver="GPKG")
+
+print(f"✅ Updated GPKG saved as: {output_gpkg}")
+
+# %%
+
+import geopandas as gpd
+
+# File path (update this with the actual file path)
+gpkg_path =  r"E:\Thesis\data\shrink_metrics\shrinkmetrics_v9.gpkg"
+
+# Load the GPKG
+gdf = gpd.read_file(gpkg_path)
+
+# 🔹 Ensure required columns exist
+required_columns = ["plot_area", "hollow_count_15percentile", "hollow_area_low15percentile"]
+missing_columns = [col for col in required_columns if col not in gdf.columns]
+
+if missing_columns:
+    raise ValueError(f"❌ Missing required columns in GPKG: {missing_columns}")
+
+# 🔹 Calculate Mound Density (mounds per square meter)
+gdf["hollow_density_low15percentile"] = gdf["hollow_count_15percentile"] / gdf["plot_area"]
+
+# 🔹 Calculate Mound Coverage (% of plot covered by mounds)
+gdf["hollow_coverage_low15percentile"] = (gdf["hollow_area_low15percentile"] / gdf["plot_area"]) * 100
+
+# Save the updated GPKG
+output_gpkg =  r"E:\Thesis\data\shrink_metrics\shrinkmetrics_v10.gpkg"
+gdf.to_file(output_gpkg, driver="GPKG")
+
+print(f"✅ Updated GPKG saved as: {output_gpkg}")
