@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-Created on Mon Mar 24 13:44:30 2025
+Created on Tue Mar 25 22:15:27 2025
 
 @author: Felix
 """
+
 # -*- coding: utf-8 -*-
 """
-XGBoost Classification with ROC-based Threshold Tuning
+XGBoost Classification with Threshold Tuning (Youden's J vs G-Mean)
 Created on Mar 24, 2025 by Felix
 """
 
@@ -20,7 +21,7 @@ import matplotlib.pyplot as plt
 from xgboost import XGBClassifier
 from sklearn.metrics import (
     accuracy_score, precision_score, recall_score, f1_score,
-    roc_auc_score, roc_curve, classification_report
+    roc_auc_score, roc_curve, classification_report, confusion_matrix
 )
 import matplotlib.colors as mcolors
 import matplotlib.patches as mpatches
@@ -29,11 +30,12 @@ import matplotlib.patches as mpatches
 target = "binary_recovery"
 target_folder = f"{target}_100"
 
-output_root = r"E:\Thesis\data\MODEL\xgb_results\chosen"
-train_file = r"E:\Thesis\data\shrink_metrics\chosen_pre8020\shrinkmetrics100_v10_80_chose.gpkg"
-vali_file = r"E:\Thesis\data\shrink_metrics\chosen_pre8020\shrinkmetrics100_v10_20_chose.gpkg"
+output_root = r"E:\Thesis\data\MODEL\xgb_class_new_results\auto"
+train_file = r"E:\Thesis\data\shrink_metrics\auto_pre8020\shrinkmetrics100_v6_80.gpkg"
+vali_file = r"E:\Thesis\data\shrink_metrics\auto_pre8020\shrinkmetrics100_v6_20.gpkg"
 
-exclude_features = ['id', 'avg_width', 'max_width', 'width_hist', 'width_bins', 'UniqueID',
+exclude_features = [
+    'id', 'avg_width', 'max_width', 'width_hist', 'width_bins', 'UniqueID',
     'shrink_dis', 'PartID', 'area', 'centroid_x', 'centroid_y',
     'edge_points', 'side', 'SegmentID', 'plot_id', 'segment_area',
     'side_area', 'plot_area', 'plot_short_veg_%cover',
@@ -48,7 +50,8 @@ exclude_features = ['id', 'avg_width', 'max_width', 'width_hist', 'width_bins', 
     'ndtm_iqr','mean_chm', 'median_chm', 'mean_chm_under5', 'median_chm_under5',
     'mean_chm_under2', 'median_chm_under2', 'tree_count', 'tree_density', 'trees_per_ha',
     'plot_pixels', 'veg_pixels_above_60cm', 'veg_cover_percent_above_60cm',
-    'binary_recovery', 'geometry']
+    'binary_recovery', 'geometry'
+]  # (keep your full list here)
 
 n_runs = 100
 top_n_features = 10
@@ -58,17 +61,16 @@ random_state_seed = 42
 # Load data
 gdf_train = gpd.read_file(train_file)
 gdf_vali = gpd.read_file(vali_file)
-
 gdf_train = gdf_train.drop(columns=["geometry"], errors="ignore")
 gdf_vali = gdf_vali.drop(columns=["geometry"], errors="ignore")
 df_train = gdf_train.select_dtypes(include=[np.number])
 df_vali = gdf_vali.select_dtypes(include=[np.number])
 
-# Output folder
+# Output
 out_dir = os.path.join(output_root, target_folder)
 os.makedirs(out_dir, exist_ok=True)
 
-# Load best parameters
+# Load best params
 param_path = os.path.join(out_dir, f"{target_folder}_best_params.json")
 with open(param_path, "r") as f:
     best_params = json.load(f)
@@ -80,11 +82,9 @@ y_train = df_train[target]
 X_vali = df_vali.drop(columns=[target] + exclude_features, errors="ignore")
 y_vali = df_vali[target]
 
-# Store metrics
+# Train 100 models
 all_metrics = {"Accuracy": [], "Precision": [], "Recall": [], "F1": [], "AUC": []}
-all_preds = []
-all_probs = []
-all_models = []
+all_preds, all_probs, all_models = [], [], []
 
 for i in range(n_runs):
     model = XGBClassifier(
@@ -107,7 +107,7 @@ for i in range(n_runs):
     all_probs.append(y_prob)
     all_models.append(model)
 
-# Save mean ± std for metrics
+# Save 100-model metrics summary
 df_summary = pd.DataFrame({
     "Metric": list(all_metrics.keys()),
     "Mean": [np.mean(all_metrics[m]) for m in all_metrics],
@@ -124,18 +124,61 @@ best_probs = all_probs[best_idx]
 # ---------------- THRESHOLD TUNING ---------------- #
 fpr, tpr, thresholds = roc_curve(y_vali, best_probs)
 youden_j = tpr - fpr
-best_thresh_idx = np.argmax(youden_j)
-optimal_threshold = thresholds[best_thresh_idx]
-print(f"🎯 Optimal threshold from ROC (Youden’s J): {optimal_threshold:.3f}")
+gmean = np.sqrt(tpr * (1 - fpr))
 
-# Save threshold
+idx_j = np.argmax(youden_j)
+idx_g = np.argmax(gmean)
+
+thr_j = thresholds[idx_j]
+thr_g = thresholds[idx_g]
+
+# Apply both thresholds
+preds_j = (best_probs >= thr_j).astype(int)
+preds_g = (best_probs >= thr_g).astype(int)
+
+f1_j = f1_score(y_vali, preds_j)
+f1_g = f1_score(y_vali, preds_g)
+
+print(f"\nYouden J: threshold={thr_j:.3f}, F1={f1_j:.3f}")
+print(f"G-Mean  : threshold={thr_g:.3f}, F1={f1_g:.3f}")
+
+# Decide best threshold
+if f1_g > f1_j:
+    final_preds = preds_g
+    final_threshold = thr_g
+    best_method = "G-Mean"
+else:
+    final_preds = preds_j
+    final_threshold = thr_j
+    best_method = "Youden's J"
+
+# Save final threshold + method
 with open(os.path.join(out_dir, f"{target_folder}_optimal_threshold.json"), "w") as f:
-    json.dump({"optimal_threshold": float(optimal_threshold)}, f)
+    json.dump({"optimal_threshold": float(final_threshold), "method": best_method}, f)
 
-# Apply threshold
-final_preds = (best_probs >= optimal_threshold).astype(int)
+# Save threshold tuning comparison
+threshold_df = pd.DataFrame({
+    "threshold": thresholds,
+    "youden_j": youden_j,
+    "gmean": gmean
+})
+threshold_df.to_csv(os.path.join(out_dir, f"{target_folder}_threshold_comparison.csv"), index=False)
 
-# Save classification results
+# Plot threshold comparison
+plt.figure(figsize=(10, 6))
+plt.plot(thresholds, youden_j, label="Youden's J", color='blue')
+plt.plot(thresholds, gmean, label="G-Mean", color='green')
+plt.axvline(thr_j, linestyle='--', color='blue', alpha=0.5)
+plt.axvline(thr_g, linestyle='--', color='green', alpha=0.5)
+plt.xlabel("Threshold")
+plt.ylabel("Score")
+plt.title("Threshold Optimization: Youden's J vs G-Mean")
+plt.legend()
+plt.tight_layout()
+plt.savefig(os.path.join(out_dir, f"{target_folder}_threshold_comparison.png"), dpi=300)
+plt.close()
+
+# Save final classification results
 results_df = pd.DataFrame({
     "plot_id": gdf_vali["plot_id"] if "plot_id" in gdf_vali.columns else np.arange(len(y_vali)),
     "true_label": y_vali.values,
@@ -145,9 +188,9 @@ results_df = pd.DataFrame({
 })
 results_df.to_csv(os.path.join(out_dir, f"{target_folder}_thresholded_results.csv"), index=False)
 
-# Print classification report
-print("\n🧾 Classification Report with Tuned Threshold:")
-print(classification_report(y_vali, final_preds, digits=3))
+# Save classification report as CSV
+report_dict = classification_report(y_vali, final_preds, output_dict=True)
+pd.DataFrame(report_dict).transpose().to_csv(os.path.join(out_dir, f"{target_folder}_classification_report.csv"))
 
 # Feature importance
 importances = best_model.feature_importances_
@@ -177,7 +220,7 @@ plt.tight_layout()
 plt.savefig(os.path.join(out_dir, f"{target_folder}_error_distribution.png"), dpi=300)
 plt.close()
 
-# SHAP summary plot
+# SHAP plot
 print(f"📊 Generating SHAP summary for {target}...")
 explainer = shap.Explainer(best_model, X_vali)
 shap_values = explainer(X_vali, check_additivity=False)
@@ -198,7 +241,7 @@ plt.tight_layout()
 plt.savefig(os.path.join(out_dir, f"{target_folder}_roc_curve.png"), dpi=300)
 plt.close()
 
-# Spatial error map
+# Spatial map
 gdf_vali_geom = gpd.read_file(vali_file)[["plot_id", "geometry"]]
 results_geo = gdf_vali_geom.merge(results_df[["plot_id", "thresholded_misclassified"]], on="plot_id")
 gpkg_path = os.path.join(out_dir, f"{target_folder}_error_map.gpkg")
@@ -213,7 +256,6 @@ results_geo.plot(
     legend=False,
     ax=ax
 )
-
 legend_elements = [
     mpatches.Patch(color="lightgreen", label="Correct"),
     mpatches.Patch(color="red", label="Misclassified")
