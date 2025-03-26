@@ -28,11 +28,11 @@ import matplotlib.patches as mpatches
 
 # ---------------- USER CONFIG ---------------- #
 target = "binary_recovery"
-target_folder = f"{target}_100"
+target_folder = f"{target}"
 
-output_root = r"E:\Thesis\data\MODEL\xgb_class_new_results\auto"
-train_file = r"E:\Thesis\data\shrink_metrics\auto_pre8020\shrinkmetrics100_v6_80.gpkg"
-vali_file = r"E:\Thesis\data\shrink_metrics\auto_pre8020\shrinkmetrics100_v6_20.gpkg"
+output_root = r"E:\Thesis\data\MODEL\rf_class_new_results\chosen"
+train_file = r"E:\Thesis\data\shrink_metrics\chosen_pre8020\shrinkmetrics_v10_80_chose.gpkg"
+vali_file = r"E:\Thesis\data\shrink_metrics\chosen_pre8020\shrinkmetrics_v10_20_chose.gpkg"
 
 exclude_features = [
     'id', 'avg_width', 'max_width', 'width_hist', 'width_bins', 'UniqueID',

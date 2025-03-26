@@ -4,6 +4,11 @@ Created on Mon Mar 24 08:46:45 2025
 
 @author: Felix
 """
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Mar 24 08:46:45 2025
+@author: Felix
+"""
 
 import os
 import json
@@ -13,8 +18,12 @@ import geopandas as gpd
 import shap
 import matplotlib.pyplot as plt
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, roc_curve
+from sklearn.metrics import (
+    accuracy_score, precision_score, recall_score, f1_score,
+    roc_auc_score, roc_curve, classification_report
+)
 import matplotlib.colors as mcolors
+import matplotlib.patches as mpatches
 
 # ---------------- USER CONFIG ---------------- #
 target = "binary_recovery"
@@ -39,7 +48,7 @@ exclude_features = ['id', 'avg_width', 'max_width', 'width_hist', 'width_bins', 
     'ndtm_iqr','mean_chm', 'median_chm', 'mean_chm_under5', 'median_chm_under5',
     'mean_chm_under2', 'median_chm_under2', 'tree_count', 'tree_density', 'trees_per_ha',
     'plot_pixels', 'veg_pixels_above_60cm', 'veg_cover_percent_above_60cm',
-    'binary_recovery', 'geometry']  # Your DEM_only exclusion list
+    'binary_recovery', 'geometry']
 
 n_runs = 100
 top_n_features = 10
@@ -109,18 +118,73 @@ print(df_summary)
 # Select best model by F1
 best_idx = np.argmax(all_metrics["F1"])
 best_model = all_models[best_idx]
-best_preds = all_preds[best_idx]
 best_probs = all_probs[best_idx]
 
-# Save classification results
+# 👇 NEW: Threshold tuning
+fpr, tpr, thresholds = roc_curve(y_vali, best_probs)
+youden_j = tpr - fpr
+gmean = np.sqrt(tpr * (1 - fpr))
+
+idx_j = np.argmax(youden_j)
+idx_g = np.argmax(gmean)
+
+thr_j = thresholds[idx_j]
+thr_g = thresholds[idx_g]
+
+preds_j = (best_probs >= thr_j).astype(int)
+preds_g = (best_probs >= thr_g).astype(int)
+
+f1_j = f1_score(y_vali, preds_j)
+f1_g = f1_score(y_vali, preds_g)
+
+print(f"\nYouden J: threshold={thr_j:.3f}, F1={f1_j:.3f}")
+print(f"G-Mean  : threshold={thr_g:.3f}, F1={f1_g:.3f}")
+
+if f1_g > f1_j:
+    final_preds = preds_g
+    final_threshold = thr_g
+    best_method = "G-Mean"
+else:
+    final_preds = preds_j
+    final_threshold = thr_j
+    best_method = "Youden's J"
+
+with open(os.path.join(out_dir, f"{target_folder}_optimal_threshold.json"), "w") as f:
+    json.dump({"optimal_threshold": float(final_threshold), "method": best_method}, f)
+
+threshold_df = pd.DataFrame({
+    "threshold": thresholds,
+    "youden_j": youden_j,
+    "gmean": gmean
+})
+threshold_df.to_csv(os.path.join(out_dir, f"{target_folder}_threshold_comparison.csv"), index=False)
+
+plt.figure(figsize=(10, 6))
+plt.plot(thresholds, youden_j, label="Youden's J", color='blue')
+plt.plot(thresholds, gmean, label="G-Mean", color='green')
+plt.axvline(thr_j, linestyle='--', color='blue', alpha=0.5)
+plt.axvline(thr_g, linestyle='--', color='green', alpha=0.5)
+plt.xlabel("Threshold")
+plt.ylabel("Score")
+plt.title("Threshold Optimization: Youden's J vs G-Mean")
+plt.legend()
+plt.tight_layout()
+plt.savefig(os.path.join(out_dir, f"{target_folder}_threshold_comparison.png"), dpi=300)
+plt.close()
+
+# 🔄 MODIFIED: Save classification results with final_preds
 results_df = pd.DataFrame({
     "plot_id": gdf_vali["plot_id"] if "plot_id" in gdf_vali.columns else np.arange(len(y_vali)),
     "true_label": y_vali.values,
-    "predicted_label": best_preds,
     "prob_class_1": best_probs,
-    "misclassified": (y_vali.values != best_preds).astype(int)
+    "thresholded_label": final_preds,
+    "thresholded_misclassified": (y_vali.values != final_preds).astype(int)
 })
-results_df.to_csv(os.path.join(out_dir, f"{target_folder}_classification_results.csv"), index=False)
+results_df.to_csv(os.path.join(out_dir, f"{target_folder}_thresholded_results.csv"), index=False)
+
+# 🔄 NEW: Classification report
+report_dict = classification_report(y_vali, final_preds, output_dict=True)
+pd.DataFrame(report_dict).transpose().to_csv(os.path.join(out_dir, f"{target_folder}_classification_report.csv"))
 
 # Feature importance
 importances = best_model.feature_importances_
@@ -142,9 +206,9 @@ plt.close()
 
 # Misclassification histogram
 plt.figure(figsize=(8, 5))
-plt.hist(results_df["misclassified"], bins=[-0.5, 0.5, 1.5], rwidth=0.7, color='orange', edgecolor='black')
+plt.hist(results_df["thresholded_misclassified"], bins=[-0.5, 0.5, 1.5], rwidth=0.7, color='orange', edgecolor='black')
 plt.xticks([0, 1], ["Correct", "Misclassified"])
-plt.title("Classification Errors")
+plt.title("Classification Errors (Thresholded)")
 plt.ylabel("Plot Count")
 plt.tight_layout()
 plt.savefig(os.path.join(out_dir, f"{target_folder}_error_distribution.png"), dpi=300)
@@ -160,7 +224,6 @@ plt.savefig(os.path.join(out_dir, f"{target_folder}_shap_summary.png"), dpi=300)
 plt.close()
 
 # ROC curve
-fpr, tpr, thresholds = roc_curve(y_vali, best_probs)
 plt.figure(figsize=(8, 6))
 plt.plot(fpr, tpr, label=f"AUC = {roc_auc_score(y_vali, best_probs):.3f}")
 plt.plot([0, 1], [0, 1], linestyle="--", color="grey")
@@ -174,24 +237,28 @@ plt.close()
 
 # Spatial error map
 gdf_vali_geom = gpd.read_file(vali_file)[["plot_id", "geometry"]]
-results_geo = gdf_vali_geom.merge(results_df, on="plot_id")
+results_geo = gdf_vali_geom.merge(results_df[["plot_id", "thresholded_misclassified"]], on="plot_id")
 gpkg_path = os.path.join(out_dir, f"{target_folder}_error_map.gpkg")
 results_geo.to_file(gpkg_path, driver="GPKG")
 
 fig, ax = plt.subplots(1, 1, figsize=(10, 8))
 results_geo.plot(
-    column="misclassified",
+    column="thresholded_misclassified",
     cmap=mcolors.ListedColormap(["lightgreen", "red"]),
     edgecolor="black",
     linewidth=0.2,
-    legend=True,
-    ax=ax,
-    legend_kwds={'labels': ["Correct", "Misclassified"]}
+    legend=False,
+    ax=ax
 )
+legend_elements = [
+    mpatches.Patch(color="lightgreen", label="Correct"),
+    mpatches.Patch(color="red", label="Misclassified")
+]
+ax.legend(handles=legend_elements, loc="lower left")
 ax.set_title(f"Spatial Classification Error Map for {target}")
 ax.set_axis_off()
 plt.tight_layout()
 plt.savefig(os.path.join(out_dir, f"{target_folder}_error_map.png"), dpi=300)
 plt.close()
-print(f"🗺️ Spatial classification error map saved.")
 
+print("✅ All done.")
