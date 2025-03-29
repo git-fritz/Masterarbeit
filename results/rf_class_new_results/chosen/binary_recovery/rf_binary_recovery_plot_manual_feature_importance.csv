@@ -1,0 +1,11 @@
+feature,importance
+rough_SD,0.1502380003351565
+rough_avg,0.13630666955986778
+dem_diff,0.12873745769130346
+plot_avg_slope,0.11873929696896757
+dem_SD,0.10660246189936895
+hollow_area_low15percentile,0.056608461266333475
+hollow_density_low15percentile,0.05598279349160398
+hollow_coverage_low15percentile,0.05452360389003685
+mound_density_15percentile,0.04574458830544948
+mound_coverage_15percentile,0.03722755810888545

@@ -1,0 +1,11 @@
+feature,importance
+mound_coverage_15percentile,0.14260639
+rough_avg,0.09199021
+plot_avg_slope,0.086285256
+hollow_density_low15percentile,0.0859929
+rough_SD,0.08503241
+mound_density_15percentile,0.08287885
+mound_area_15percentile,0.077731684
+dem_SD,0.06619949
+hollow_count_15percentile,0.059899386
+hollow_coverage_low15percentile,0.058012467

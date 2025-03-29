@@ -1,0 +1,11 @@
+feature,importance
+max_mound_size_15percentile,0.09254194030882748
+avg_mound_size_15percentile,0.09174334899154428
+mound_area_15percentile,0.09074356170539356
+mound_coverage_15percentile,0.07971465649112873
+dem_SD,0.07965954202099472
+mound_count_15percentile,0.07870023208926323
+plot_avg_slope,0.07623526657911468
+mound_density_15percentile,0.06568791251841682
+rough_avg,0.06376639645863913
+dem_diff,0.056308724436477456
