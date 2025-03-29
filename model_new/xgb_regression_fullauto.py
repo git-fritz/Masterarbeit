@@ -1,7 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-Created on Mon Mar 24 12:40:16 2025
+Created on Thu Mar 27 20:45:49 2025
 
+@author: Felix
+"""
+
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Mar 24 13:29:08 2025
 @author: Felix
 """
 
@@ -19,8 +25,10 @@ import matplotlib.colors as mcolors
 # ---------------- USER CONFIG ---------------- #
 target_variables = ["median_chm", "mean_chm", "tree_count"]
 output_root = r"E:\Thesis\data\MODEL\xgb_results\auto"
-train_file = r"E:\Thesis\data\shrink_metrics\auto_pre8020\shrinkmetrics_v6_80.gpkg"
-vali_file = r"E:\Thesis\data\shrink_metrics\auto_pre8020\shrinkmetrics_v6_20.gpkg"
+# train_file = r"E:\Thesis\data\shrink_metrics\chosen_pre8020\shrinkmetrics100_v10_80_chose.gpkg"
+# vali_file =  r"E:\Thesis\data\shrink_metrics\chosen_pre8020\shrinkmetrics100_v10_20_chose.gpkg"
+train_file = r"E:\Thesis\data\shrink_metrics\auto_pre8020\shrinkmetrics100_v6_80.gpkg"
+vali_file = r"E:\Thesis\data\shrink_metrics\auto_pre8020\shrinkmetrics100_v6_20.gpkg"
 
 exclude_features = ['id', 'avg_width', 'max_width', 'width_hist', 'width_bins', 'UniqueID',
        'shrink_dis', 'PartID', 'area', 'centroid_x', 'centroid_y',
@@ -37,8 +45,8 @@ exclude_features = ['id', 'avg_width', 'max_width', 'width_hist', 'width_bins', 
        'ndtm_iqr','mean_chm', 'median_chm', 'mean_chm_under5', 'median_chm_under5',
        'mean_chm_under2', 'median_chm_under2', 'tree_count', 'tree_density', 'trees_per_ha',
        'plot_pixels', 'veg_pixels_above_60cm', 'veg_cover_percent_above_60cm',
-       'binary_recovery', 'geometry']  # Replace with your DEM_only exclusion list
-
+       'binary_recovery', 'geometry','index', 'index_right']
+  # your full exclude list
 n_runs = 100
 top_n_features = 10
 random_state_seed = 42
@@ -54,14 +62,22 @@ df_train = gdf_train.select_dtypes(include=[np.number])
 df_vali = gdf_vali.select_dtypes(include=[np.number])
 
 for target in target_variables:
-    print(f"\n🔁 Running XGBoost for target: {target}")
+    target_folder = f"{target}_100"
 
-    # Output folder
-    out_dir = os.path.join(output_root, target)
+    # Determine dynamic name components
+    model_type = "xgb"
+    granularity = "segment" if "_100" in target_folder else "plot"
+    data_source = "auto" if "auto" in output_root.lower() else "manual"
+    full_id = f"{model_type}_{target}_{granularity}_{data_source}"
+
+    print(f"\n🚀 Running XGBoost for target: {target} → {full_id}")
+
+    # Output path
+    out_dir = os.path.join(output_root, target_folder)
     os.makedirs(out_dir, exist_ok=True)
 
-    # Load best parameters from JSON
-    param_path = os.path.join(out_dir, f"{target}_best_params.json")
+    # Load best hyperparameters
+    param_path = os.path.join(out_dir, f"{target_folder}_best_params.json")
     with open(param_path, "r") as f:
         best_params = json.load(f)
     print(f"✅ Loaded best parameters for {target}: {best_params}")
@@ -78,9 +94,9 @@ for target in target_variables:
 
     for i in range(n_runs):
         model = XGBRegressor(
-            objective="reg:squarederror",
             random_state=random_state_seed + i,
             n_jobs=-1,
+            verbosity=0,
             **best_params
         )
         model.fit(X_train, y_train)
@@ -98,10 +114,10 @@ for target in target_variables:
         "Mean": [np.mean(all_metrics["MAE"]), np.mean(all_metrics["RMSE"]), np.mean(all_metrics["R2"])],
         "Std": [np.std(all_metrics["MAE"]), np.std(all_metrics["RMSE"]), np.std(all_metrics["R2"])]
     })
-    df_summary.to_csv(os.path.join(out_dir, f"{target}_xgb_metrics.csv"), index=False)
+    df_summary.to_csv(os.path.join(out_dir, f"{full_id}_metrics.csv"), index=False)
     print(df_summary)
 
-    # Select best model
+    # Select best model by R²
     best_idx = np.argmax(all_metrics["R2"])
     best_model = all_models[best_idx]
     best_preds = all_preds[best_idx]
@@ -114,7 +130,7 @@ for target in target_variables:
         f"{target}_predicted": best_preds,
         "residual": residuals
     })
-    residuals_df.to_csv(os.path.join(out_dir, f"{target}_residuals.csv"), index=False)
+    residuals_df.to_csv(os.path.join(out_dir, f"{full_id}_residuals.csv"), index=False)
 
     # Feature importance
     importances = best_model.feature_importances_
@@ -123,25 +139,25 @@ for target in target_variables:
         "feature": feature_names,
         "importance": importances
     }).sort_values(by="importance", ascending=False).head(top_n_features)
-    fi_df.to_csv(os.path.join(out_dir, f"{target}_feature_importance.csv"), index=False)
+    fi_df.to_csv(os.path.join(out_dir, f"{full_id}_feature_importance.csv"), index=False)
 
-    # Feature importance plot
+    # Plot feature importance
     plt.figure(figsize=(10, 6))
     plt.barh(fi_df["feature"][::-1], fi_df["importance"][::-1])
     plt.xlabel("Importance")
-    plt.title(f"Top {top_n_features} Features for {target}")
+    plt.title(f"Top {top_n_features} Features for {full_id}")
     plt.tight_layout()
-    plt.savefig(os.path.join(out_dir, f"{target}_feature_importance.png"), dpi=300)
+    plt.savefig(os.path.join(out_dir, f"{full_id}_feature_importance.png"), dpi=300)
     plt.close()
 
     # Residual distribution
     plt.figure(figsize=(8, 5))
     plt.hist(residuals, bins=30, color='steelblue', edgecolor='black')
-    plt.title(f"Residual Distribution for {target}")
+    plt.title(f"Residual Distribution for {full_id}")
     plt.xlabel("Residual")
     plt.ylabel("Frequency")
     plt.tight_layout()
-    plt.savefig(os.path.join(out_dir, f"{target}_residual_distribution.png"), dpi=300)
+    plt.savefig(os.path.join(out_dir, f"{full_id}_residual_distribution.png"), dpi=300)
     plt.close()
 
     # Residuals vs. predicted
@@ -150,24 +166,24 @@ for target in target_variables:
     plt.axhline(0, color='red', linestyle='--')
     plt.xlabel("Predicted")
     plt.ylabel("Residual")
-    plt.title(f"Residuals vs. Predicted for {target}")
+    plt.title(f"Residuals vs. Predicted for {full_id}")
     plt.tight_layout()
-    plt.savefig(os.path.join(out_dir, f"{target}_residuals_vs_predicted.png"), dpi=300)
+    plt.savefig(os.path.join(out_dir, f"{full_id}_residuals_vs_predicted.png"), dpi=300)
     plt.close()
 
-    # SHAP summary plot
-    print(f"📊 Generating SHAP summary for {target}...")
+    # SHAP summary
+    print(f"📊 Generating SHAP summary for {full_id}...")
     explainer = shap.Explainer(best_model, X_vali)
     shap_values = explainer(X_vali, check_additivity=False)
     shap.summary_plot(shap_values, X_vali, show=False, max_display=top_n_features)
     plt.tight_layout()
-    plt.savefig(os.path.join(out_dir, f"{target}_shap_summary.png"), dpi=300)
+    plt.savefig(os.path.join(out_dir, f"{full_id}_shap_summary.png"), dpi=300)
     plt.close()
 
     # Spatial residuals map
     gdf_vali_geom = gpd.read_file(vali_file)[["plot_id", "geometry"]]
     residuals_geo = gdf_vali_geom.merge(residuals_df, on="plot_id")
-    gpkg_path = os.path.join(out_dir, f"{target}_residuals_map.gpkg")
+    gpkg_path = os.path.join(out_dir, f"{full_id}_residuals_map.gpkg")
     residuals_geo.to_file(gpkg_path, driver="GPKG")
 
     fig, ax = plt.subplots(1, 1, figsize=(10, 8))
@@ -183,9 +199,8 @@ for target in target_variables:
         vmin=-divider,
         vmax=divider
     )
-    ax.set_title(f"Spatial Residuals Map for {target}")
+    ax.set_title(f"Spatial Residuals Map for {full_id}")
     ax.set_axis_off()
     plt.tight_layout()
-    plt.savefig(os.path.join(out_dir, f"{target}_residuals_map.png"), dpi=300)
+    plt.savefig(os.path.join(out_dir, f"{full_id}_residuals_map.png"), dpi=300)
     plt.close()
-    print(f"🗺️ Spatial classification error map saved.")

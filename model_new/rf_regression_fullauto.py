@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-Created on Sun Mar 23 22:44:13 2025
-
+Updated RF Regression Script with Naming Logic
+Created on Mar 27, 2025
 @author: Felix
 """
 
@@ -14,31 +14,31 @@ import shap
 import matplotlib.pyplot as plt
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
-import matplotlib.colors as mcolors
 
 # ---------------- USER CONFIG ---------------- #
-target_variables = ["median_chm","mean_chm", "tree_count"]
-# data_folder = r"E:\Thesis\code_storage\Masterarbeit\model_results\auto"
-output_root = r"E:\Thesis\data\MODEL\rf_results_regression\chosen"
+target_variables = ["median_chm", "mean_chm", "tree_count"]
+output_root = r"E:\Thesis\data\MODEL\rf_results\chosen"
 train_file = r"E:\Thesis\data\shrink_metrics\chosen_pre8020\shrinkmetrics_v10_80_chose.gpkg"
-vali_file = r"E:\Thesis\data\shrink_metrics\chosen_pre8020\shrinkmetrics_v10 _20_chose.gpkg"
+vali_file = r"E:\Thesis\data\shrink_metrics\chosen_pre8020\shrinkmetrics_v10_20_chose.gpkg"
+# train_file = r"E:\Thesis\data\shrink_metrics\auto_pre8020\shrinkmetrics100_v6_80.gpkg"
+# vali_file = r"E:\Thesis\data\shrink_metrics\auto_pre8020\shrinkmetrics100_v6_20.gpkg"
 
 exclude_features = ['id', 'avg_width', 'max_width', 'width_hist', 'width_bins', 'UniqueID',
-       'shrink_dis', 'PartID', 'area', 'centroid_x', 'centroid_y',
-       'edge_points', 'side', 'SegmentID', 'plot_id', 'segment_area',
-       'side_area', 'plot_area', 'plot_short_veg_%cover',
-       'plot_medium_veg_%cover', 'plot_tall_veg_%cover', 'plot_forest_%cover',
-       'side_short_veg_%cover', 'side_medium_veg_%cover',
-       'side_tall_veg_%cover', 'side_forest_%cover',
-       'segment_short_veg_%cover', 'segment_medium_veg_%cover',
-       'segment_tall_veg_%cover', 'segment_forest_%cover', 'adjacency_area_ha',
-       'adjacency_tree13m_coverage', 'adjacency_tree8m_coverage',
-       'adjacency_tree5m_coverage', 'adjacency_tree3m_coverage',
-       'adjacency_tree1.5m_coverage', 'hummock_coverage', 'hollow_coverage',
-       'ndtm_iqr','mean_chm', 'median_chm', 'mean_chm_under5', 'median_chm_under5',
-       'mean_chm_under2', 'median_chm_under2', 'tree_count', 'tree_density', 'trees_per_ha',
-       'plot_pixels', 'veg_pixels_above_60cm', 'veg_cover_percent_above_60cm',
-       'binary_recovery', 'geometry']  # <-- your DEM_only exclusion list
+    'shrink_dis', 'PartID', 'area', 'centroid_x', 'centroid_y',
+    'edge_points', 'side', 'SegmentID', 'plot_id', 'segment_area',
+    'side_area', 'plot_area', 'plot_short_veg_%cover',
+    'plot_medium_veg_%cover', 'plot_tall_veg_%cover', 'plot_forest_%cover',
+    'side_short_veg_%cover', 'side_medium_veg_%cover',
+    'side_tall_veg_%cover', 'side_forest_%cover',
+    'segment_short_veg_%cover', 'segment_medium_veg_%cover',
+    'segment_tall_veg_%cover', 'segment_forest_%cover', 'adjacency_area_ha',
+    'adjacency_tree13m_coverage', 'adjacency_tree8m_coverage',
+    'adjacency_tree5m_coverage', 'adjacency_tree3m_coverage',
+    'adjacency_tree1.5m_coverage', 'hummock_coverage', 'hollow_coverage',
+    'ndtm_iqr','mean_chm', 'median_chm', 'mean_chm_under5', 'median_chm_under5',
+    'mean_chm_under2', 'median_chm_under2', 'tree_count', 'tree_density', 'trees_per_ha',
+    'plot_pixels', 'veg_pixels_above_60cm', 'veg_cover_percent_above_60cm',
+    'binary_recovery', 'geometry', 'plot_avg_aspect', 'index', 'index_right']
 
 n_runs = 100
 top_n_features = 10
@@ -55,14 +55,18 @@ df_train = gdf_train.select_dtypes(include=[np.number])
 df_vali = gdf_vali.select_dtypes(include=[np.number])
 
 for target in target_variables:
-    print(f"\n🔁 Running RF for target: {target}")
+    target_folder = f"{target}_100"  # for compatibility
+    granularity = "segment" if target_folder.endswith("_100") else "plot"
+    source_type = "auto" if "auto" in output_root.lower() else "manual"
+    full_id = f"rf_{target}_{granularity}_{source_type}"
 
-    # Output folder
-    out_dir = os.path.join(output_root, target)
+    print(f"\n🔁 Running RF for target: {target} ({full_id})")
+
+    out_dir = os.path.join(output_root, target_folder)
     os.makedirs(out_dir, exist_ok=True)
 
-    # Load best parameters from JSON
-    param_path = os.path.join(out_dir, f"{target}_best_params.json")
+    # Load best hyperparameters
+    param_path = os.path.join(out_dir, f"{target_folder}_best_params.json")
     with open(param_path, "r") as f:
         best_params = json.load(f)
     print(f"✅ Loaded best parameters for {target}: {best_params}")
@@ -92,85 +96,77 @@ for target in target_variables:
         all_preds.append(y_pred)
         all_models.append(model)
 
-    # Save metrics summary
+    # Save metrics
     df_summary = pd.DataFrame({
         "Metric": ["MAE", "RMSE", "R²"],
         "Mean": [np.mean(all_metrics["MAE"]), np.mean(all_metrics["RMSE"]), np.mean(all_metrics["R2"])],
         "Std": [np.std(all_metrics["MAE"]), np.std(all_metrics["RMSE"]), np.std(all_metrics["R2"])]
     })
-    df_summary.to_csv(os.path.join(out_dir, f"{target}_rf_metrics.csv"), index=False)
+    df_summary.to_csv(os.path.join(out_dir, f"{full_id}_rf_metrics.csv"), index=False)
     print(df_summary)
 
-    # Select best model
     best_idx = np.argmax(all_metrics["R2"])
     best_model = all_models[best_idx]
     best_preds = all_preds[best_idx]
     residuals = y_vali - best_preds
 
-    # Save residuals
     residuals_df = pd.DataFrame({
         "plot_id": gdf_vali["plot_id"] if "plot_id" in gdf_vali.columns else np.arange(len(y_vali)),
         f"{target}_actual": y_vali.values,
         f"{target}_predicted": best_preds,
         "residual": residuals
     })
-    residuals_df.to_csv(os.path.join(out_dir, f"{target}_residuals.csv"), index=False)
+    residuals_df.to_csv(os.path.join(out_dir, f"{full_id}_residuals.csv"), index=False)
 
-    # Feature importance
     importances = best_model.feature_importances_
     feature_names = X_train.columns
     fi_df = pd.DataFrame({
         "feature": feature_names,
         "importance": importances
     }).sort_values(by="importance", ascending=False).head(top_n_features)
-    fi_df.to_csv(os.path.join(out_dir, f"{target}_feature_importance.csv"), index=False)
+    fi_df.to_csv(os.path.join(out_dir, f"{full_id}_feature_importance.csv"), index=False)
 
-    # Plot feature importance
+    # Plots
     plt.figure(figsize=(10, 6))
     plt.barh(fi_df["feature"][::-1], fi_df["importance"][::-1])
     plt.xlabel("Importance")
-    plt.title(f"Top {top_n_features} Features for {target}")
+    plt.title(f"Top {top_n_features} Features for {full_id}")
     plt.tight_layout()
-    plt.savefig(os.path.join(out_dir, f"{target}_feature_importance.png"), dpi=300)
+    plt.savefig(os.path.join(out_dir, f"{full_id}_feature_importance.png"), dpi=300)
     plt.close()
 
-    # Residual distribution
     plt.figure(figsize=(8, 5))
     plt.hist(residuals, bins=30, color='steelblue', edgecolor='black')
-    plt.title(f"Residual Distribution for {target}")
+    plt.title(f"Residual Distribution for {full_id}")
     plt.xlabel("Residual")
     plt.ylabel("Frequency")
     plt.tight_layout()
-    plt.savefig(os.path.join(out_dir, f"{target}_residual_distribution.png"), dpi=300)
+    plt.savefig(os.path.join(out_dir, f"{full_id}_residual_distribution.png"), dpi=300)
     plt.close()
 
-    # Residuals vs. predicted
     plt.figure(figsize=(8, 5))
     plt.scatter(best_preds, residuals, alpha=0.6)
     plt.axhline(0, color='red', linestyle='--')
     plt.xlabel("Predicted")
     plt.ylabel("Residual")
-    plt.title(f"Residuals vs. Predicted for {target}")
+    plt.title(f"Residuals vs. Predicted for {full_id}")
     plt.tight_layout()
-    plt.savefig(os.path.join(out_dir, f"{target}_residuals_vs_predicted.png"), dpi=300)
+    plt.savefig(os.path.join(out_dir, f"{full_id}_residuals_vs_predicted.png"), dpi=300)
     plt.close()
 
-    # SHAP summary plot
-    print(f"📊 Generating SHAP summary for {target}...")
+    # SHAP summary
+    print(f"📊 Generating SHAP summary for {full_id}...")
     explainer = shap.Explainer(best_model, X_vali)
     shap_values = explainer(X_vali, check_additivity=False)
     shap.summary_plot(shap_values, X_vali, show=False, max_display=top_n_features)
     plt.tight_layout()
-    shap_path = os.path.join(out_dir, f"{target}_shap_summary.png")
-    plt.savefig(shap_path, dpi=300)
+    plt.savefig(os.path.join(out_dir, f"{full_id}_shap_summary.png"), dpi=300)
     plt.close()
 
-    # Spatial residuals map
-    gdf_vali_geom = gpd.read_file(vali_file)
-    gdf_vali_geom = gdf_vali_geom[["plot_id", "geometry"]]  # minimal join keys
-
+    # Spatial residuals
+    gdf_vali_geom = gpd.read_file(vali_file)[["plot_id", "geometry"]]
     residuals_geo = gdf_vali_geom.merge(residuals_df, on="plot_id")
-    gpkg_path = os.path.join(out_dir, f"{target}_residuals_map.gpkg")
+    gpkg_path = os.path.join(out_dir, f"{full_id}_residuals_map.gpkg")
     residuals_geo.to_file(gpkg_path, driver="GPKG")
 
     fig, ax = plt.subplots(1, 1, figsize=(10, 8))
@@ -186,9 +182,10 @@ for target in target_variables:
         vmin=-divider,
         vmax=divider
     )
-    ax.set_title(f"Spatial Residuals Map for {target}")
+    ax.set_title(f"Spatial Residuals Map for {full_id}")
     ax.set_axis_off()
     plt.tight_layout()
-    plt.savefig(os.path.join(out_dir, f"{target}_residuals_map.png"), dpi=300)
+    plt.savefig(os.path.join(out_dir, f"{full_id}_residuals_map.png"), dpi=300)
     plt.close()
-    print(f"🗺️ Residuals spatial map saved.")
+
+    print(f"✅ Done with {full_id}")
